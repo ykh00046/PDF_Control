@@ -1,0 +1,40 @@
+# Resolved issues registry.
+#
+# Source of truth for issues that USED to appear in CLAUDE.md
+# "Known Issues" but have been fixed in code. The drift-guard script
+# (scripts/check_claude_md_drift.py) fails if CLAUDE.md still lists
+# any title whose slug is registered here.
+#
+# Slug rule: lowercase title, non-alphanumeric replaced with '-',
+# collapsed repeats, trimmed.
+
+resolved:
+  - slug: config-default-pollution
+    title: "Config default pollution"
+    resolved_at: 2025-12-30
+    evidence: app/config.py:39
+    note: "_default_config() uses copy.deepcopy"
+
+  - slug: preview-temp-document-close-leak
+    title: "Preview temp document close leak"
+    resolved_at: 2026-01-15
+    evidence: app/pdf_engine.py:109-112
+    note: "finally block ensures preview_doc.close()"
+
+  - slug: removesection-memory-guard
+    title: "RemoveSection memory guard"
+    resolved_at: 2026-02-10
+    evidence: app/model.py:163-186
+    note: "DPI auto-cap + memory budget"
+
+  - slug: preview-save-logic-divergence
+    title: "Preview-Save logic divergence"
+    resolved_at: 2026-03-05
+    evidence: app/operations_service.py:65-143
+    note: "Unified via ApplyMode enum"
+
+  - slug: long-text-in-narrow-areas
+    title: "Long Text in Narrow Areas"
+    resolved_at: 2026-04-15
+    evidence: app/operations_service.py:33-60
+    note: "Structured OpWarning surfaces shrink/overflow to UI (status bar, history, save guard)"
