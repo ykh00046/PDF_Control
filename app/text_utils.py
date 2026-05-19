@@ -11,6 +11,7 @@ from typing import List, Optional, Set, Tuple
 # These can appear in PDFs with malformed font encodings and cause
 # crashes during text processing or display.
 _INVALID_UNICODE_RE = re.compile(r"[\ud800-\udfff\x00]")
+_HANGUL_RE = re.compile(r"[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af]")
 
 # Replacement character for invalid Unicode
 REPLACEMENT_CHAR = "\ufffd"
@@ -32,6 +33,11 @@ def sanitize_unicode(text: str) -> str:
     if not text:
         return text
     return _INVALID_UNICODE_RE.sub(REPLACEMENT_CHAR, text)
+
+
+def contains_hangul(text: str) -> bool:
+    """Return True when text contains Hangul jamo or syllables."""
+    return bool(text and _HANGUL_RE.search(text))
 
 
 def parse_page_range(page_range_str: str, total_pages: int) -> Set[int]:

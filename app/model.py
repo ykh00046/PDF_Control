@@ -51,10 +51,13 @@ class Operation(ABC):
         if op_type == "RedactDelete":
             return RedactDelete(page_index, rects)
         elif op_type == "RedactReplace":
+            color = data.get("color", None)
             return RedactReplace(
                 page_index, rects, data["new_text"],
                 data.get("fontname", "helv"), data.get("fontsize", 0),
-                data.get("align", 0), data.get("fontfile", None)
+                data.get("align", 0), data.get("fontfile", None),
+                tuple(color) if color else None,
+                data.get("font_flags", 0)
             )
         elif op_type == "CropMargins":
             return CropMargins(

@@ -42,6 +42,60 @@ def test_ui_remove_section_uses_supported_operation_keywords():
     assert bad_keywords == []
 
 
+def test_redact_replace_roundtrip_preserves_font_metadata():
+    op = RedactReplace(
+        0,
+        [fitz.Rect(10, 20, 30, 40)],
+        "done",
+        fontname="Times-BoldItalic",
+        fontsize=11,
+        fontfile="C:/Windows/Fonts/times.ttf",
+        color=(0.1, 0.2, 0.3),
+        font_flags=18,
+    )
+
+    from app.model import Operation
+
+    restored = Operation.from_dict(op.to_dict())
+
+    assert restored.fontname == "Times-BoldItalic"
+    assert restored.fontsize == 11
+    assert restored.fontfile == "C:/Windows/Fonts/times.ttf"
+    assert restored.color == (0.1, 0.2, 0.3)
+    assert restored.font_flags == 18
+
+
+def test_operation_applicator_maps_font_flags_to_base14_aliases():
+    applicator = OperationApplicator()
+
+    assert applicator._base14_font_alias("Helvetica", 16) == "hebo"
+    assert applicator._base14_font_alias("Times", 18) == "tibi"
+    assert applicator._base14_font_alias("Courier", 2) == "coit"
+
+
+def test_batch_replace_uses_emitted_fontsize_payload():
+    source = (Path(__file__).parent.parent / "app" / "ui.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    target_func = next(
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef) and node.name == "process_batch_replacements"
+    )
+
+    redact_replace_calls = [
+        node
+        for node in ast.walk(target_func)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "RedactReplace"
+    ]
+
+    assert any(
+        any(keyword.arg == "fontsize" for keyword in node.keywords)
+        for node in redact_replace_calls
+    )
+
+
 def test_save_document_rebinds_session_to_saved_file(tmp_path):
     input_path = tmp_path / "input.pdf"
     output_path = tmp_path / "output.pdf"

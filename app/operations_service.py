@@ -86,6 +86,44 @@ class OperationApplicator:
             logger: Optional logger instance. If None, uses global logger.
         """
         self.logger = logger or get_logger()
+
+    def _base14_font_alias(self, fontname: str, font_flags: int) -> str:
+        """Choose a PyMuPDF Base-14 alias from extracted font metadata."""
+        normalized = (fontname or "").lower()
+        is_bold = bool(font_flags & 16) or "bold" in normalized or "black" in normalized
+        is_italic = bool(font_flags & 2) or "italic" in normalized or "oblique" in normalized
+        is_mono = bool(font_flags & 8) or any(
+            token in normalized for token in ("courier", "consolas", "mono")
+        )
+        is_serif = bool(font_flags & 4) or any(
+            token in normalized for token in ("times", "serif", "georgia", "roman")
+        )
+
+        if is_mono:
+            if is_bold and is_italic:
+                return "cobi"
+            if is_bold:
+                return "cobo"
+            if is_italic:
+                return "coit"
+            return "cour"
+
+        if is_serif:
+            if is_bold and is_italic:
+                return "tibi"
+            if is_bold:
+                return "tibo"
+            if is_italic:
+                return "tiit"
+            return "tiro"
+
+        if is_bold and is_italic:
+            return "hebi"
+        if is_bold:
+            return "hebo"
+        if is_italic:
+            return "heit"
+        return "helv"
     
     def apply_operations(
         self,
@@ -212,7 +250,7 @@ class OperationApplicator:
             if not isinstance(op, RedactReplace):
                 continue
                 
-            alias = op.fontname  # Default alias
+            alias = self._base14_font_alias(op.fontname, op.font_flags)
             
             if op.fontfile and os.path.exists(op.fontfile):
                 # Use base filename as alias (e.g., "arial" from "arial.ttf")

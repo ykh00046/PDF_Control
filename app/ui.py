@@ -12,6 +12,7 @@ from app.logger import setup_logger, get_logger, get_log_file_path
 from app.batch_replace_dialog import BatchReplaceDialog # Import BatchReplaceDialog
 from app.config import load_config, save_config, get_config_value, set_config_value
 from app.i18n import load_translations, tr
+from app.text_utils import contains_hangul
 from typing import Optional, List, Dict, Any # Import Optional, List, Dict, Any
 import os
 import subprocess
@@ -537,8 +538,15 @@ class MainWindow(QMainWindow):
             page_index = r_data["page_index"]
             rect = r_data["rect"]
             new_text = r_data["new_text"]
+            fontsize = r_data.get("fontsize") or 0
 
-            operation = RedactReplace(page_index, [rect], new_text, fontfile=self.current_replacement_font_path)
+            operation = RedactReplace(
+                page_index,
+                [rect],
+                new_text,
+                fontfile=self.current_replacement_font_path,
+                fontsize=fontsize,
+            )
             # We should batch add operations if possible to avoid multiple signal emits?
             # Controller emits operation_applied for each add.
             # Ideally controller handles batch update.
@@ -720,11 +728,13 @@ class MainWindow(QMainWindow):
             return None
         return text
 
-    def _resolve_replacement_font(self):
-        """Return font path, auto-selecting a Korean fallback if unset."""
+    def _resolve_replacement_font(self, replacement_text: str = ""):
+        """Return font path, auto-selecting Korean fallback only when needed."""
         font_path = self.current_replacement_font_path
         if font_path:
             return font_path
+        if not contains_hangul(replacement_text):
+            return None
         from app.fonts import get_default_korean_font_path
         font_path = get_default_korean_font_path()
         if font_path:
@@ -748,11 +758,12 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            font_path = self._resolve_replacement_font()
+            font_path = self._resolve_replacement_font(replacement_text)
             from app.model import _extract_text_metadata
             meta = _extract_text_metadata(page, target_rect)
             operation = RedactReplace(
                 page_index, [target_rect], replacement_text,
+                fontname=meta["fontname"],
                 fontfile=font_path,
                 fontsize=meta["fontsize"],
                 color=meta["color"],
