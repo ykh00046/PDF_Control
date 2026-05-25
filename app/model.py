@@ -569,6 +569,87 @@ class DocumentSession(QObject):
         self.modified = True
         self.history_changed.emit()
 
+    def duplicate_pages(self, page_indices: List[int]) -> int:
+        """Duplicate the given pages, inserting each copy directly after the original.
+
+        Indices are 0-based. Duplication is processed in descending order so
+        that earlier indices remain valid while later ones expand.
+        Pending edit history is invalidated because page indices shift.
+        """
+        if not page_indices:
+            raise ValueError("page_indices must not be empty")
+        if len(set(page_indices)) != len(page_indices):
+            raise ValueError("page_indices must not contain duplicates")
+        page_count = self.doc.page_count
+        for idx in page_indices:
+            if idx < 0 or idx >= page_count:
+                raise IndexError(f"page index out of range: {idx}")
+        for idx in sorted(page_indices, reverse=True):
+            current_count = self.doc.page_count
+            target = idx + 1 if idx + 1 < current_count else -1
+            self.doc.copy_page(idx, target)
+        self._rebuild_after_reorder()
+        get_logger().info(f"Duplicated {len(page_indices)} page(s)")
+        return len(page_indices)
+
+    def extract_pages(self, page_indices: List[int], output_path: str) -> None:
+        """Save the selected pages to a new PDF file. The source document is unchanged.
+
+        Raises ValueError on empty input or destination conflict, IndexError on
+        invalid page indices.
+        """
+        if not page_indices:
+            raise ValueError("page_indices must not be empty")
+        page_count = self.doc.page_count
+        for idx in page_indices:
+            if idx < 0 or idx >= page_count:
+                raise IndexError(f"page index out of range: {idx}")
+        if not output_path:
+            raise ValueError("output_path must not be empty")
+        parent_dir = os.path.dirname(os.path.abspath(output_path))
+        if parent_dir and not os.path.isdir(parent_dir):
+            raise ValueError(f"output directory does not exist: {parent_dir}")
+        if self.file_path and os.path.abspath(output_path) == os.path.abspath(self.file_path):
+            raise ValueError("Cannot overwrite source document")
+
+        new_doc = fitz.open()
+        try:
+            for idx in page_indices:
+                new_doc.insert_pdf(self.doc, from_page=idx, to_page=idx)
+            new_doc.save(output_path)
+        finally:
+            new_doc.close()
+        get_logger().info(
+            f"Extracted {len(page_indices)} page(s) to {output_path}"
+        )
+
+    def merge_pdf(self, source_path: str, after_index: int = -1) -> int:
+        """Insert every page from another PDF after the given index (-1 = end).
+
+        Returns the number of pages inserted. Raises FileNotFoundError if the
+        source file does not exist and ValueError on invalid PDF / index.
+        """
+        if not source_path or not os.path.isfile(source_path):
+            raise FileNotFoundError(f"PDF not found: {source_path}")
+        page_count = self.doc.page_count
+        if after_index != -1 and (after_index < 0 or after_index >= page_count):
+            raise ValueError(f"after_index out of range: {after_index}")
+        try:
+            src = fitz.open(source_path)
+        except Exception as e:
+            raise ValueError(f"Invalid PDF: {e}") from e
+        try:
+            added = src.page_count
+            start_at = page_count if after_index == -1 else after_index + 1
+            self.doc.insert_pdf(src, start_at=start_at)
+        finally:
+            src.close()
+        self._rebuild_after_reorder()
+        get_logger().info(
+            f"Merged {added} page(s) from {source_path} starting at index {start_at}"
+        )
+        return added
+
     def close(self):
         if self.doc:
             log_file_operation("close", self.file_path, success=True)

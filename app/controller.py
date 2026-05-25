@@ -162,6 +162,44 @@ class EditorController(QObject):
             self.error_occurred.emit(str(e))
             return False
 
+    def duplicate_pages(self, page_indices: list) -> bool:
+        """Duplicate selected pages (copy inserted directly after each original)."""
+        if not self._session:
+            return False
+        try:
+            self._session.duplicate_pages(page_indices)
+            self.operation_applied.emit()
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to duplicate pages: {e}")
+            self.error_occurred.emit(str(e))
+            return False
+
+    def extract_pages(self, page_indices: list, output_path: str) -> bool:
+        """Extract selected pages to a new PDF (source document unchanged)."""
+        if not self._session:
+            return False
+        try:
+            self._session.extract_pages(page_indices, output_path)
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to extract pages: {e}")
+            self.error_occurred.emit(str(e))
+            return False
+
+    def merge_pdf(self, source_path: str, after_index: int = -1) -> bool:
+        """Insert pages from another PDF after after_index (-1 = end of document)."""
+        if not self._session:
+            return False
+        try:
+            self._session.merge_pdf(source_path, after_index)
+            self.operation_applied.emit()
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to merge PDF: {e}")
+            self.error_occurred.emit(str(e))
+            return False
+
     def _on_history_changed(self):
         """Relay session history changed signal."""
         self.history_changed.emit()

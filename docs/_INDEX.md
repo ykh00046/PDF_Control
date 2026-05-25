@@ -25,24 +25,27 @@
 | ----------------------- | --------------------------------------------------------------------------------- | -------------- | ------------ |
 | Project Status Analysis | [project-status.plan.md](01-plan/features/project-status.plan.md)                 | 🔄 In Progress | 2026-01-30   |
 | Operations Restructure  | [operations-restructure.plan.md](01-plan/features/operations-restructure.plan.md) | 🔄 In Progress | 2026-04-21   |
+| Page Advanced Ops       | [page-advanced-ops.plan.md](01-plan/features/page-advanced-ops.plan.md)           | ✅ Approved    | 2026-05-25   |
 
 ### Design (02-design/)
 
-| Feature | Document | Status | Last Updated |
-| ------- | -------- | ------ | ------------ |
-| -       | -        | -      | -            |
+| Feature           | Document                                                                    | Status         | Last Updated |
+| ----------------- | --------------------------------------------------------------------------- | -------------- | ------------ |
+| Page Advanced Ops | [page-advanced-ops.design.md](02-design/features/page-advanced-ops.design.md) | ✅ Approved    | 2026-05-25   |
 
 ### Analysis (03-analysis/)
 
 | Feature                | Document                                                                    | Status         | Last Updated |
 | ---------------------- | --------------------------------------------------------------------------- | -------------- | ------------ |
 | Current State Analysis | [current-state.analysis.md](03-analysis/features/current-state.analysis.md) | 🔄 In Progress | 2026-01-30   |
+| Page Advanced Ops      | [page-advanced-ops.analysis.md](03-analysis/features/page-advanced-ops.analysis.md) | ✅ Approved    | 2026-05-25   |
 
 ### Report (04-report/)
 
 | Feature                 | Document                                       | Status         | Last Updated |
 | ----------------------- | ---------------------------------------------- | -------------- | ------------ |
 | Source Boundary Review  | [source-boundary.report.md](04-report/source-boundary.report.md) | 🔄 In Progress | 2026-03-31   |
+| Page Advanced Ops       | [page-advanced-ops.report.md](04-report/features/page-advanced-ops.report.md) | ✅ Approved    | 2026-05-25   |
 
 ---
 

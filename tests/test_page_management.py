@@ -172,3 +172,135 @@ class TestInsertBlankPage:
         assert abs(last_page.rect.width - 595) < 1
         assert abs(last_page.rect.height - 842) < 1
         session.close()
+
+
+def _make_simple_pdf(path, num_pages, label_prefix="Other"):
+    """Helper to fabricate a simple multi-page PDF for merge tests."""
+    d = fitz.open()
+    for i in range(num_pages):
+        p = d.new_page(width=595, height=842)
+        p.insert_text((72, 72), f"{label_prefix} {i + 1}", fontsize=18)
+    d.save(str(path))
+    d.close()
+
+
+class TestDuplicatePages:
+    def test_duplicate_single_increases_page_count(self, multi_page_pdf):
+        session = DocumentSession(multi_page_pdf)
+        original = session.doc.page_count
+        added = session.duplicate_pages([0])
+        assert added == 1
+        assert session.doc.page_count == original + 1
+        assert session.modified is True
+        session.close()
+
+    def test_duplicate_multiple_pages(self, multi_page_pdf):
+        session = DocumentSession(multi_page_pdf)
+        added = session.duplicate_pages([0, 2, 4])
+        assert added == 3
+        assert session.doc.page_count == 5 + 3
+        session.close()
+
+    def test_duplicate_preserves_content(self, multi_page_pdf):
+        session = DocumentSession(multi_page_pdf)
+        original_text = session.doc[2].get_text().strip()
+        session.duplicate_pages([2])
+        # PyMuPDF copy_page(2, 3) places copy at index 3
+        assert session.doc[3].get_text().strip() == original_text
+        session.close()
+
+    def test_duplicate_empty_raises(self, multi_page_pdf):
+        session = DocumentSession(multi_page_pdf)
+        with pytest.raises(ValueError):
+            session.duplicate_pages([])
+        session.close()
+
+    def test_duplicate_out_of_range_raises(self, multi_page_pdf):
+        session = DocumentSession(multi_page_pdf)
+        with pytest.raises(IndexError):
+            session.duplicate_pages([99])
+        session.close()
+
+
+class TestExtractPages:
+    def test_extract_creates_file_with_correct_count(self, multi_page_pdf, tmp_path):
+        session = DocumentSession(multi_page_pdf)
+        out = tmp_path / "extracted.pdf"
+        session.extract_pages([0, 2], str(out))
+        assert out.exists()
+        with fitz.open(str(out)) as d:
+            assert d.page_count == 2
+        session.close()
+
+    def test_extract_preserves_original(self, multi_page_pdf, tmp_path):
+        session = DocumentSession(multi_page_pdf)
+        out = tmp_path / "out.pdf"
+        session.extract_pages([1, 3], str(out))
+        assert session.doc.page_count == 5
+        assert session.modified is False
+        session.close()
+
+    def test_extract_preserves_text_content(self, multi_page_pdf, tmp_path):
+        session = DocumentSession(multi_page_pdf)
+        out = tmp_path / "out.pdf"
+        session.extract_pages([1], str(out))
+        with fitz.open(str(out)) as d:
+            assert "Page 2" in d[0].get_text()
+        session.close()
+
+    def test_extract_invalid_index_raises(self, multi_page_pdf, tmp_path):
+        session = DocumentSession(multi_page_pdf)
+        out = tmp_path / "out.pdf"
+        with pytest.raises(IndexError):
+            session.extract_pages([0, 99], str(out))
+        session.close()
+
+    def test_extract_empty_raises(self, multi_page_pdf, tmp_path):
+        session = DocumentSession(multi_page_pdf)
+        out = tmp_path / "out.pdf"
+        with pytest.raises(ValueError):
+            session.extract_pages([], str(out))
+        session.close()
+
+    def test_extract_overwriting_source_raises(self, multi_page_pdf):
+        session = DocumentSession(multi_page_pdf)
+        with pytest.raises(ValueError):
+            session.extract_pages([0], multi_page_pdf)
+        session.close()
+
+
+class TestMergePdf:
+    def test_merge_appends_at_end(self, multi_page_pdf, tmp_path):
+        other = tmp_path / "other.pdf"
+        _make_simple_pdf(other, 3)
+        session = DocumentSession(multi_page_pdf)
+        added = session.merge_pdf(str(other), after_index=-1)
+        assert added == 3
+        assert session.doc.page_count == 5 + 3
+        assert session.modified is True
+        session.close()
+
+    def test_merge_at_specific_position(self, multi_page_pdf, tmp_path):
+        other = tmp_path / "other.pdf"
+        _make_simple_pdf(other, 1, label_prefix="Inserted")
+        session = DocumentSession(multi_page_pdf)
+        session.merge_pdf(str(other), after_index=1)  # after page index 1
+        # Inserted page should be at index 2
+        assert "Inserted" in session.doc[2].get_text()
+        assert session.doc.page_count == 6
+        session.close()
+
+    def test_merge_nonexistent_raises(self, multi_page_pdf, tmp_path):
+        session = DocumentSession(multi_page_pdf)
+        missing = tmp_path / "does_not_exist.pdf"
+        with pytest.raises(FileNotFoundError):
+            session.merge_pdf(str(missing))
+        session.close()
+
+    def test_merge_invalid_after_index_raises(self, multi_page_pdf, tmp_path):
+        other = tmp_path / "other.pdf"
+        _make_simple_pdf(other, 1)
+        session = DocumentSession(multi_page_pdf)
+        with pytest.raises(ValueError):
+            session.merge_pdf(str(other), after_index=99)
+        session.close()

@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Added page management advanced operations: duplicate, extract (save selected pages as a new PDF), and merge (insert another PDF).
 - Rebound saved sessions to the saved document and unified preview/save operation paths.
 - Moved preview rendering to a subprocess-based worker and added a PDF engine boundary.
 - Switched Windows packaging to PyInstaller onedir mode for the render-worker architecture.

@@ -13,7 +13,7 @@ import fitz
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget,
     QListWidgetItem, QAbstractItemView, QMessageBox, QLabel,
-    QToolBar, QSizePolicy
+    QToolBar, QSizePolicy, QFileDialog
 )
 from PySide6.QtGui import QPixmap, QImage, QIcon, QAction
 from PySide6.QtCore import Qt, Signal, QSize
@@ -95,6 +95,23 @@ class PageManagerDialog(QDialog):
         self.move_down_action.setToolTip(tr("page_manager.move_down.tooltip"))
         self.move_down_action.triggered.connect(self._move_down)
         toolbar.addAction(self.move_down_action)
+
+        toolbar.addSeparator()
+
+        self.duplicate_action = QAction(tr("page_manager.duplicate"), self)
+        self.duplicate_action.setToolTip(tr("page_manager.duplicate.tooltip"))
+        self.duplicate_action.triggered.connect(self._duplicate_selected)
+        toolbar.addAction(self.duplicate_action)
+
+        self.extract_action = QAction(tr("page_manager.extract"), self)
+        self.extract_action.setToolTip(tr("page_manager.extract.tooltip"))
+        self.extract_action.triggered.connect(self._extract_selected)
+        toolbar.addAction(self.extract_action)
+
+        self.merge_action = QAction(tr("page_manager.merge"), self)
+        self.merge_action.setToolTip(tr("page_manager.merge.tooltip"))
+        self.merge_action.triggered.connect(self._merge_pdf)
+        toolbar.addAction(self.merge_action)
 
         layout.addWidget(toolbar)
 
@@ -272,6 +289,74 @@ class PageManagerDialog(QDialog):
             self._load_thumbnails()
             self.page_list.setCurrentRow(current_row + 1)
             self._mark_changed()
+
+    def _duplicate_selected(self):
+        """Duplicate all selected pages (each copy inserted immediately after the original)."""
+        selected = self.page_list.selectedItems()
+        if not selected:
+            QMessageBox.information(
+                self,
+                tr("page_manager.error.title"),
+                tr("page_manager.error.no_selection"),
+            )
+            return
+        indices = [self.page_list.row(item) for item in selected]
+        if self.controller.duplicate_pages(indices):
+            self._load_thumbnails()
+            self._mark_changed()
+            self.logger.info(f"Duplicated {len(indices)} page(s)")
+
+    def _extract_selected(self):
+        """Save selected pages to a new PDF file."""
+        selected = self.page_list.selectedItems()
+        if not selected:
+            QMessageBox.information(
+                self,
+                tr("page_manager.error.title"),
+                tr("page_manager.error.no_selection"),
+            )
+            return
+        indices = sorted(self.page_list.row(item) for item in selected)
+        output_path, _ = QFileDialog.getSaveFileName(
+            self,
+            tr("page_manager.extract.dialog_title"),
+            "",
+            "PDF Files (*.pdf)",
+        )
+        if not output_path:
+            return
+        if not output_path.lower().endswith(".pdf"):
+            output_path += ".pdf"
+        if self.controller.extract_pages(indices, output_path):
+            QMessageBox.information(
+                self,
+                tr("page_manager.title"),
+                tr("page_manager.extract.success", output_path),
+            )
+
+    def _merge_pdf(self):
+        """Insert all pages from a chosen PDF after the current selection (or at the end)."""
+        source_path, _ = QFileDialog.getOpenFileName(
+            self,
+            tr("page_manager.merge.dialog_title"),
+            "",
+            "PDF Files (*.pdf)",
+        )
+        if not source_path:
+            return
+        selected = self.page_list.selectedItems()
+        if selected:
+            after_index = self.page_list.row(selected[-1])
+        else:
+            after_index = -1
+        if self.controller.merge_pdf(source_path, after_index):
+            self._load_thumbnails()
+            self._mark_changed()
+            QMessageBox.information(
+                self,
+                tr("page_manager.title"),
+                tr("page_manager.merge.success"),
+            )
 
     def _on_rows_moved(self):
         """Handle drag-and-drop reorder via QListWidget internal move."""
