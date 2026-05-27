@@ -16,3 +16,4 @@ docs/.pdca-snapshots/
 
 htmlcov/
 .coverage
+.pytest-tmp/

@@ -1,10 +1,19 @@
 # Plan: operations-restructure
 
-**Status**: Plan
-**Date**: 2026-04-21
+**Status**: 🟢 Approved (scope-trimmed for current cycle)
+**Date**: 2026-04-21 (original) · 2026-05-27 (scope revision)
 **Owner**: PDF Control
 **Priority**: Medium (quality/maintainability, no user-facing defect)
 **Inspiration**: rhwp `src/document_core/` CQRS + command module split, `validation.rs` `ValidationReport.summary()` 패턴
+
+## Cycle Scope (2026-05-27 revision)
+
+원본 Plan의 acceptance를 **두 사이클로 분리**한다 — 본 사이클은 ✅ 표시, 다음 사이클은 ⏭ 표시.
+
+- ✅ **본 사이클 (operations-restructure)**: 패키지 분할 + WarningReport API + shim/import 호환 + mypy strict 확장
+- ⏭ **차기 사이클 (operations-consumers)**: `model.py:395`, `ui.py:162` 등 호출 측을 `WarningReport` API로 마이그레이션
+
+이유: 호출 측 마이그레이션은 별개 회귀 가능성이 있는 작업이고, 한 사이클에 묶으면 Non-Goal "외부 동작 100% 동일" 검증 부담이 커진다. WarningReport는 **추가만**하고 기존 property는 위임으로 유지하면 두 단계로 안전하게 분리 가능.
 
 ## Problem
 

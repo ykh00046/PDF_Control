@@ -74,10 +74,14 @@ def test_operation_applicator_maps_font_flags_to_base14_aliases():
 
 
 def test_batch_replace_uses_emitted_fontsize_payload():
-    # process_batch_replacements moved from app/ui.py to app/ui_handlers.py
-    # as part of the ui-refactor split (DialogHandlerMixin).
+    # process_batch_replacements moved from app/ui.py to
+    # app/handlers/dialog_handlers.py as part of the ui_handlers split
+    # (DialogHandlerMixin).
     source = (
-        Path(__file__).parent.parent / "app" / "ui_handlers.py"
+        Path(__file__).parent.parent
+        / "app"
+        / "handlers"
+        / "dialog_handlers.py"
     ).read_text(encoding="utf-8")
     tree = ast.parse(source)
     target_func = next(
