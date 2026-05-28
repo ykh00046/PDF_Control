@@ -66,7 +66,7 @@ def run_render_job(job_path: str | Path) -> int:
             }
             for w in (apply_result.warnings if apply_result else [])
         ]
-    except Exception as exc:
+    except (OSError, IOError) as exc:
         result["error"] = str(exc)
 
     with open(response_path, "w", encoding="utf-8") as handle:

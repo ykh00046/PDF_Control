@@ -216,7 +216,7 @@ class PDFViewer(QGraphicsView):
                         with open(response_path, "r", encoding="utf-8") as handle:
                             response = json.load(handle)
                         error_message = response.get("error", error_message)
-                    except Exception:
+                    except (json.JSONDecodeError, ValueError, OSError):
                         pass
                 elif stderr_output:
                     error_message = stderr_output

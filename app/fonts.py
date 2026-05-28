@@ -49,7 +49,7 @@ def _populate_font_cache():
                     # Reached the end of the registry key values
                     break
         logger.info(f"Font cache populated with {len(_font_cache)} fonts from Windows Registry.")
-    except Exception as e:
+    except OSError as e:
         logger.error(f"Failed to read fonts from Windows Registry: {e}")
         # Fallback or empty cache
         _font_cache = {}

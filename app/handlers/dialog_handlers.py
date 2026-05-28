@@ -278,7 +278,7 @@ class DialogHandlerMixin:
             else:
                 subprocess.run(["xdg-open", log_file])
             self.logger.info("User opened log file")
-        except Exception as e:
+        except OSError as e:
             self.logger.error(f"Failed to open log file: {e}")
             msg = QMessageBox(self)
             msg.setIcon(QMessageBox.Warning)

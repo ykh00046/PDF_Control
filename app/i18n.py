@@ -28,7 +28,7 @@ def _detect_windows_locale() -> str | None:
 
         lang_id = ctypes.windll.kernel32.GetUserDefaultUILanguage()
         return locale.windows_locale.get(lang_id)
-    except Exception:
+    except OSError:
         return None
 
 
@@ -115,7 +115,7 @@ def load_translations(locale_code: str = None) -> Dict[str, Any]:
         _current_locale = locale_code
         logger.info(f"Loaded translations for locale: {locale_code}")
         return _translations
-    except Exception as e:
+    except (OSError, IOError) as e:
         logger.error(f"Failed to load translations: {e}")
         _translations = {}
         _current_locale = DEFAULT_LOCALE
@@ -173,6 +173,6 @@ def set_locale(locale_code: str) -> bool:
         load_translations(locale_code)
         logger.info(f"Locale manually set to: {locale_code}")
         return True
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.error(f"Failed to set locale: {e}")
         return False

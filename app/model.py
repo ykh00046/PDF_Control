@@ -636,7 +636,7 @@ class DocumentSession(QObject):
             raise ValueError(f"after_index out of range: {after_index}")
         try:
             src = fitz.open(source_path)
-        except Exception as e:
+        except (OSError, IOError) as e:
             raise ValueError(f"Invalid PDF: {e}") from e
         try:
             added = src.page_count

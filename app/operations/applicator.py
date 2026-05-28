@@ -227,7 +227,7 @@ class OperationApplicator:
                             f"Font '{alias}' already present on page {page.number}"
                         )
 
-                except Exception as e:
+                except (OSError, IOError) as e:
                     self.logger.error(
                         f"Font embedding failed for '{op.fontfile}': {e}. "
                         f"Falling back to default."

@@ -77,7 +77,7 @@ def load_config() -> Dict[str, Any]:
 
         logger.info(f"Config loaded from {source_path}")
         return config
-    except Exception as e:
+    except (OSError, IOError) as e:
         logger.error(f"Failed to load config: {e}, using defaults")
         return _default_config()
 
@@ -102,7 +102,7 @@ def save_config(config: Dict[str, Any]) -> bool:
 
         logger.info(f"Config saved to {config_path}")
         return True
-    except Exception as e:
+    except (OSError, IOError) as e:
         logger.error(f"Failed to save config: {e}")
         return False
 
