@@ -69,13 +69,17 @@ class EditorController(QObject):
                 self._session = None
                 self.document_closed.emit()
 
-    def save_document(self, output_path: str):
-        """Saves the modified document to the specified path."""
+    def save_document(self, output_path: str, encryption=None):
+        """Saves the modified document to the specified path.
+
+        ``encryption`` is an optional :class:`~app.encryption.EncryptionSettings`
+        applied at save time (password protection + permissions).
+        """
         if not self._session:
             return
-        
+
         try:
-            self._session.save_document(output_path)
+            self._session.save_document(output_path, encryption=encryption)
             self.operation_applied.emit()
         except Exception as e:
             self.logger.error(f"Failed to save document: {e}")
@@ -189,14 +193,44 @@ class EditorController(QObject):
 
     def merge_pdf(self, source_path: str, after_index: int = -1) -> bool:
         """Insert pages from another PDF after after_index (-1 = end of document)."""
+        return self.merge_pdfs([source_path], after_index)
+
+    def merge_pdfs(self, source_paths: list, after_index: int = -1) -> bool:
+        """Insert pages from several PDFs (in order) after after_index (-1 = end)."""
         if not self._session:
             return False
         try:
-            self._session.merge_pdf(source_path, after_index)
+            self._session.merge_pdfs(source_paths, after_index)
             self.operation_applied.emit()
             return True
         except Exception as e:
-            self.logger.error(f"Failed to merge PDF: {e}")
+            self.logger.error(f"Failed to merge PDFs: {e}")
+            self.error_occurred.emit(str(e))
+            return False
+
+    def split_document(self, output_dir: str, groups: list, base_name=None) -> list:
+        """Split the document into multiple PDFs (source unchanged).
+
+        Returns the list of written file paths, or an empty list on failure.
+        """
+        if not self._session:
+            return []
+        try:
+            return self._session.split_document(output_dir, groups, base_name)
+        except Exception as e:
+            self.logger.error(f"Failed to split document: {e}")
+            self.error_occurred.emit(str(e))
+            return []
+
+    def export_text(self, output_path: str, page_indices=None, fmt: str = "txt") -> bool:
+        """Export page/document text to a txt or md file (source unchanged)."""
+        if not self._session:
+            return False
+        try:
+            self._session.export_text(output_path, page_indices, fmt)
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to export text: {e}")
             self.error_occurred.emit(str(e))
             return False
 

@@ -105,6 +105,14 @@ class StatusBarManager:
                     )
                 elif code == "text.overflow":
                     lines.append(tr("warn.code.text.overflow", page_idx + 1))
+                elif code == "text.wrapped":
+                    lines.append(
+                        tr(
+                            "warn.code.text.wrapped",
+                            page_idx + 1,
+                            detail.get("lines", 0),
+                        )
+                    )
                 else:
                     lines.append(f"p{page_idx + 1}: {code}")
         QMessageBox.information(

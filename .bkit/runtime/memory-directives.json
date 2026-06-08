@@ -1,0 +1,12 @@
+{
+  "version": "2.1.14",
+  "count": 1,
+  "items": [
+    {
+      "pattern": "single letters except for common iterators (i, j)",
+      "action": "warn",
+      "rule": "avoid",
+      "source": "CLAUDE.md"
+    }
+  ]
+}

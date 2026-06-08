@@ -19,6 +19,8 @@ from PySide6.QtGui import QPixmap, QImage, QIcon, QAction
 from PySide6.QtCore import Qt, Signal, QSize
 from app.i18n import tr
 from app.logger import get_logger
+from app.page_split import SplitMode, compute_split_groups
+from app.split_dialog import SplitDialog
 
 # Thumbnail rendering constants
 THUMB_WIDTH = 120
@@ -112,6 +114,11 @@ class PageManagerDialog(QDialog):
         self.merge_action.setToolTip(tr("page_manager.merge.tooltip"))
         self.merge_action.triggered.connect(self._merge_pdf)
         toolbar.addAction(self.merge_action)
+
+        self.split_action = QAction(tr("page_manager.split"), self)
+        self.split_action.setToolTip(tr("page_manager.split.tooltip"))
+        self.split_action.triggered.connect(self._split_document)
+        toolbar.addAction(self.split_action)
 
         layout.addWidget(toolbar)
 
@@ -335,27 +342,78 @@ class PageManagerDialog(QDialog):
             )
 
     def _merge_pdf(self):
-        """Insert all pages from a chosen PDF after the current selection (or at the end)."""
-        source_path, _ = QFileDialog.getOpenFileName(
+        """Insert all pages from one or more chosen PDFs after the selection (or end)."""
+        source_paths, _ = QFileDialog.getOpenFileNames(
             self,
             tr("page_manager.merge.dialog_title"),
             "",
             "PDF Files (*.pdf)",
         )
-        if not source_path:
+        if not source_paths:
             return
         selected = self.page_list.selectedItems()
         if selected:
             after_index = self.page_list.row(selected[-1])
         else:
             after_index = -1
-        if self.controller.merge_pdf(source_path, after_index):
+        if self.controller.merge_pdfs(source_paths, after_index):
             self._load_thumbnails()
             self._mark_changed()
             QMessageBox.information(
                 self,
                 tr("page_manager.title"),
-                tr("page_manager.merge.success"),
+                tr("page_manager.merge.success_multi", len(source_paths)),
+            )
+
+    def _split_document(self):
+        """Split the whole document into multiple PDFs (source unchanged)."""
+        session = self.controller.session
+        if not session or not session.doc or session.doc.page_count == 0:
+            QMessageBox.information(
+                self,
+                tr("page_manager.error.title"),
+                tr("page_manager.error.no_selection"),
+            )
+            return
+
+        page_count = session.doc.page_count
+        dialog = SplitDialog(page_count, self)
+        if dialog.exec() != QDialog.Accepted:
+            return
+
+        settings = dialog.get_settings()
+        if not settings["output_dir"]:
+            QMessageBox.warning(
+                self,
+                tr("page_manager.error.title"),
+                tr("split.output_dir.required"),
+            )
+            return
+
+        # Turn the chosen mode/params into concrete page-index groups.
+        try:
+            groups = compute_split_groups(
+                page_count,
+                settings["mode"],
+                every_n=settings["every_n"],
+                ranges_spec=settings["ranges_spec"],
+            )
+        except ValueError as e:
+            self.logger.warning(f"Invalid split request: {e}")
+            QMessageBox.warning(
+                self,
+                tr("page_manager.error.title"),
+                tr("split.error.invalid_ranges"),
+            )
+            return
+
+        written = self.controller.split_document(settings["output_dir"], groups)
+        if written:
+            # Splitting does not modify the source document, so no _mark_changed().
+            QMessageBox.information(
+                self,
+                tr("page_manager.title"),
+                tr("split.success", len(written)),
             )
 
     def _on_rows_moved(self):

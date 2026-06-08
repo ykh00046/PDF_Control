@@ -24,7 +24,7 @@ def get_base_path() -> Path:
     """
     if is_frozen():
         # PyInstaller frozen environment
-        return Path(sys._MEIPASS)
+        return Path(sys._MEIPASS)  # type: ignore[attr-defined]
     else:
         # Development environment
         return Path(__file__).parent.parent

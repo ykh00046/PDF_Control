@@ -6,6 +6,7 @@ import logging.handlers
 import os
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 from app.path_helper import get_logs_dir
 
 # Global logger instance
@@ -53,7 +54,7 @@ def setup_logger(log_dir: str | Path | None = None, log_level: int = logging.DEB
     date_token = datetime.now().strftime('%Y%m%d')
     log_filename = log_path / f"app_{date_token}.log"
     try:
-        file_handler = logging.handlers.TimedRotatingFileHandler(
+        file_handler: logging.Handler = logging.handlers.TimedRotatingFileHandler(
             filename=log_filename,
             when='midnight',
             interval=1,
@@ -101,7 +102,7 @@ def get_logger() -> logging.Logger:
     return _logger
 
 
-def log_operation(operation_type: str, page_index: int, rect_count: int, **kwargs):
+def log_operation(operation_type: str, page_index: int, rect_count: int, **kwargs: Any) -> None:
     """
     Log a PDF operation (delete/replace) with metadata only.
 
@@ -120,7 +121,7 @@ def log_operation(operation_type: str, page_index: int, rect_count: int, **kwarg
     )
 
 
-def log_file_operation(operation: str, file_path: str, success: bool, error_msg: str = ""):
+def log_file_operation(operation: str, file_path: str, success: bool, error_msg: str = "") -> None:
     """
     Log file I/O operations (open, save, close).
 
@@ -139,7 +140,7 @@ def log_file_operation(operation: str, file_path: str, success: bool, error_msg:
         logger.error(f"File {operation}: {filename} - FAILED | Error: {error_msg}")
 
 
-def log_render_performance(page_index: int, render_time_ms: float, zoom_level: float):
+def log_render_performance(page_index: int, render_time_ms: float, zoom_level: float) -> None:
     """
     Log page rendering performance.
 
@@ -162,7 +163,7 @@ def log_render_performance(page_index: int, render_time_ms: float, zoom_level: f
         )
 
 
-def log_coordinate_transform(from_coords, to_coords, transform_type: str):
+def log_coordinate_transform(from_coords: Any, to_coords: Any, transform_type: str) -> None:
     """
     Log coordinate transformations for debugging.
 
@@ -175,7 +176,7 @@ def log_coordinate_transform(from_coords, to_coords, transform_type: str):
     logger.debug(f"Coordinate transform [{transform_type}]: {from_coords} -> {to_coords}")
 
 
-def log_memory_warning(current_mb: float, threshold_mb: float):
+def log_memory_warning(current_mb: float, threshold_mb: float) -> None:
     """
     Log memory usage warnings.
 

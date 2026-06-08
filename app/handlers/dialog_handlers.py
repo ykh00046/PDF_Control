@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, Dict, List
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication,
+    QFileDialog,
     QMessageBox,
     QProgressDialog,
 )
@@ -257,6 +258,61 @@ class DialogHandlerMixin:
     def _on_pages_changed(self: "MainWindow") -> None:  # type: ignore[misc]
         """Handle page structure changes from page manager."""
         self.viewer.image_cache.clear()
+
+    # --- Text export ----------------------------------------------------
+    def open_text_export_dialog(self: "MainWindow") -> None:  # type: ignore[misc]
+        """Open the text export dialog (whole document or current page)."""
+        if not self.controller.session:
+            self.statusBar().showMessage(tr("status.no_document_export"))
+            self.logger.warning("Attempted text export with no document loaded.")
+            return
+
+        from app.text_export_dialog import TextExportDialog
+
+        dialog = TextExportDialog(self)
+        dialog.export_confirmed.connect(self.apply_text_export)
+        dialog.exec()
+
+    def apply_text_export(  # type: ignore[misc]
+        self: "MainWindow", settings: dict
+    ) -> None:
+        """Resolve page scope, prompt for a path, and write the extracted text."""
+        if not self.controller.session:
+            return
+
+        fmt = settings.get("fmt", "txt")
+        if settings.get("scope") == "current":
+            page_indices = [self.viewer.current_page_index]
+        else:
+            page_indices = None  # whole document
+
+        if fmt == "md":
+            file_filter = "Markdown Files (*.md)"
+            ext = ".md"
+        else:
+            file_filter = "Text Files (*.txt)"
+            ext = ".txt"
+
+        base = self.controller.session.file_path
+        suggested = (
+            base.rsplit(".", 1)[0] + ext if base else "untitled" + ext
+        )
+        output_path, _ = QFileDialog.getSaveFileName(
+            self, tr("text_export.dialog_title"), suggested, file_filter
+        )
+        if not output_path:
+            self.statusBar().showMessage(tr("status.ready"))
+            return
+        if not output_path.lower().endswith(ext):
+            output_path += ext
+
+        if self.controller.export_text(output_path, page_indices, fmt):
+            self.statusBar().showMessage(tr("text_export.success", output_path))
+            self.logger.info(f"Exported text to {output_path} ({fmt})")
+        else:
+            QMessageBox.critical(
+                self, tr("dialog.error"), tr("error.export_failed", output_path)
+            )
 
     # --- View logs ------------------------------------------------------
     def view_logs(self: "MainWindow") -> None:  # type: ignore[misc]

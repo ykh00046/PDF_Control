@@ -52,6 +52,25 @@ class FileHandlerMixin:
             self._update_edit_action_states()
 
     def save_file_as(self: "MainWindow") -> bool:  # type: ignore[misc]
+        return self._commit_save(encryption=None)
+
+    def save_file_encrypted(self: "MainWindow") -> bool:  # type: ignore[misc]
+        """Save As… with password protection / permission restrictions."""
+        if not self.controller.session:
+            self.statusBar().showMessage(tr("status.no_document_save"))
+            return False
+
+        # Local import keeps Qt dialog code out of the module's import-time deps.
+        from app.encryption_dialog import EncryptionDialog
+
+        dialog = EncryptionDialog(self)
+        if dialog.exec() != EncryptionDialog.Accepted:
+            self.statusBar().showMessage(tr("status.cancelled_save"))
+            return False
+        return self._commit_save(encryption=dialog.get_settings())
+
+    def _commit_save(self: "MainWindow", encryption=None) -> bool:  # type: ignore[misc]
+        """Shared Save As… path: blocking-warning guard, path picker, write."""
         if not self.controller.session:
             self.statusBar().showMessage(tr("status.no_document_save"))
             return False
@@ -81,13 +100,17 @@ class FileHandlerMixin:
 
         if output_path:
             try:
-                self.controller.save_document(output_path)
+                self.controller.save_document(output_path, encryption=encryption)
                 saved_path = (
                     self.controller.session.file_path
                     if self.controller.session
                     else output_path
                 )
-                self.statusBar().showMessage(tr("status.saved", saved_path))
+                encrypted = encryption is not None and encryption.is_active()
+                self.statusBar().showMessage(
+                    tr("status.saved_encrypted", saved_path) if encrypted
+                    else tr("status.saved", saved_path)
+                )
                 self.logger.info("User saved document successfully")
 
                 self.setWindowTitle(

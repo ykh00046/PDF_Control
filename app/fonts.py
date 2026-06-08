@@ -14,7 +14,7 @@ else:
 # Cache for font paths to avoid repeated registry scans
 _font_cache: Optional[Dict[str, str]] = None
 
-def _populate_font_cache():
+def _populate_font_cache() -> None:
     """
     Populates the font cache by reading from the Windows Registry.
     This is much faster and more reliable than scanning font directories.
@@ -62,9 +62,11 @@ def get_font_path_by_name(font_name: str) -> Optional[str]:
     """
     if _font_cache is None:
         _populate_font_cache()
-    
+
+    # _populate_font_cache() always assigns a dict; narrow for the type checker.
+    cache = _font_cache if _font_cache is not None else {}
     # Perform a case-insensitive search
-    return _font_cache.get(font_name.lower())
+    return cache.get(font_name.lower())
 
 def get_default_korean_font_path() -> Optional[str]:
     """Returns path to a default Korean font (Malgun Gothic) if available."""

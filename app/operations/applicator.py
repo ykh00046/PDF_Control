@@ -10,6 +10,26 @@ import os
 import fitz
 from typing import Any, List, Dict, Tuple, Optional
 
+from app.config import (
+    FONT_FLAG_BOLD,
+    FONT_FLAG_ITALIC,
+    FONT_FLAG_MONOSPACE,
+    FONT_FLAG_SERIF,
+    TEXT_AUTOFIT_ITERATIONS,
+    TEXT_AUTOFIT_MIN_FONT_SIZE,
+    TEXT_AUTOFIT_WIDTH_RATIO,
+    TEXT_BOX_X_PADDING,
+    TEXT_BOX_Y_PADDING,
+    TEXT_DEFAULT_COLOR,
+    TEXT_DEFAULT_FONT_SIZE,
+    TEXT_PREVIEW_BLACK_COLOR,
+    TEXT_SHRINK_FACTOR,
+    TEXT_SHRINK_ITERATIONS,
+    TEXT_SHRINK_MIN_FONT_SIZE,
+    TEXT_WRAP_BOTTOM_MARGIN,
+    TEXT_WRAP_ENABLED,
+    TEXT_WRAP_LINE_HEIGHT_FACTOR,
+)
 from app.logger import get_logger
 from app.operations.types import ApplyMode, TextMetadata
 from app.operations.warnings import ApplyResult, OpWarning
@@ -45,12 +65,12 @@ class OperationApplicator:
     def _base14_font_alias(self, fontname: str, font_flags: int) -> str:
         """Choose a PyMuPDF Base-14 alias from extracted font metadata."""
         normalized = (fontname or "").lower()
-        is_bold = bool(font_flags & 16) or "bold" in normalized or "black" in normalized
-        is_italic = bool(font_flags & 2) or "italic" in normalized or "oblique" in normalized
-        is_mono = bool(font_flags & 8) or any(
+        is_bold = bool(font_flags & FONT_FLAG_BOLD) or "bold" in normalized or "black" in normalized
+        is_italic = bool(font_flags & FONT_FLAG_ITALIC) or "italic" in normalized or "oblique" in normalized
+        is_mono = bool(font_flags & FONT_FLAG_MONOSPACE) or any(
             token in normalized for token in ("courier", "consolas", "mono")
         )
-        is_serif = bool(font_flags & 4) or any(
+        is_serif = bool(font_flags & FONT_FLAG_SERIF) or any(
             token in normalized for token in ("times", "serif", "georgia", "roman")
         )
 
@@ -120,9 +140,7 @@ class OperationApplicator:
             f"Applying {len(operations)} operations in {mode.value} mode"
         )
 
-        # Store warnings for result (structured)
-        self.current_warnings: List[OpWarning] = []
-        self._current_op_index: int = -1
+        warnings: List[OpWarning] = []
 
         # Pass 0: Crop operations (changes page geometry)
         self._apply_crop_operations(page, operations)
@@ -146,7 +164,7 @@ class OperationApplicator:
 
             # Pass 3: Insert replacement text
             self._insert_replacement_text(
-                page, redactions, font_aliases, font_sizes, mode
+                page, redactions, font_aliases, font_sizes, mode, warnings
             )
 
         # Pass 4: Section removal. In preview this is still safe because the
@@ -155,7 +173,7 @@ class OperationApplicator:
             self._apply_section_removal(page, operations)
 
         # Collect warnings (counts are derived via properties)
-        result.warnings = self.current_warnings
+        result.warnings = warnings
 
         return result
 
@@ -267,7 +285,12 @@ class OperationApplicator:
             if op.rects:
                 raw_meta = dict(_extract_text_metadata(page, op.rects[0]))
             else:
-                raw_meta = {"fontsize": 12.0, "color": (0.0, 0.0, 0.0), "font_flags": 0, "fontname": op.fontname}
+                raw_meta = {
+                    "fontsize": TEXT_DEFAULT_FONT_SIZE,
+                    "color": TEXT_DEFAULT_COLOR,
+                    "font_flags": 0,
+                    "fontname": op.fontname,
+                }
 
             if op.fontsize and op.fontsize > 0:
                 raw_meta["fontsize"] = op.fontsize
@@ -338,7 +361,8 @@ class OperationApplicator:
         operations: List[Any],
         font_aliases: Dict[int, str],
         text_metadata: Dict[int, TextMetadata],
-        mode: ApplyMode
+        mode: ApplyMode,
+        warnings: List[OpWarning],
     ) -> None:
         """
         Insert replacement text for RedactReplace operations.
@@ -354,8 +378,8 @@ class OperationApplicator:
 
             # Get working values from metadata
             default_meta: TextMetadata = {
-                "fontsize": 12.0,
-                "color": (0.0, 0.0, 0.0),
+                "fontsize": TEXT_DEFAULT_FONT_SIZE,
+                "color": TEXT_DEFAULT_COLOR,
                 "font_flags": 0,
                 "fontname": op.fontname,
             }
@@ -366,8 +390,13 @@ class OperationApplicator:
             font_alias = font_aliases.get(i, meta["fontname"])
 
             # In preview mode, use slightly gray color if black is selected
-            if mode == ApplyMode.PREVIEW and text_color == (0, 0, 0):
-                text_color = (0.15, 0.15, 0.15)
+            if mode == ApplyMode.PREVIEW and text_color == TEXT_DEFAULT_COLOR:
+                text_color = TEXT_PREVIEW_BLACK_COLOR
+
+            # Resolve the per-operation wrap policy. None means "follow the
+            # global default"; an explicit True/False overrides it.
+            op_wrap = getattr(op, "wrap", None)
+            wrap_enabled = op_wrap if op_wrap is not None else TEXT_WRAP_ENABLED
 
             # Insert text for each rectangle
             for rect in op.rects:
@@ -376,7 +405,56 @@ class OperationApplicator:
                     font_alias, final_fontsize,
                     op.fontfile, text_color, font_flags,
                     op_index=i,
+                    warnings=warnings,
+                    wrap_enabled=wrap_enabled,
                 )
+
+    def _wrap_line_count(
+        self,
+        fit_font: "fitz.Font",
+        text: str,
+        fontsize: float,
+        max_width: float,
+    ) -> Tuple[int, float]:
+        """
+        Estimate how many lines ``text`` needs when wrapped at ``max_width``.
+
+        Mirrors ``insert_textbox``'s whitespace-based greedy wrapping so we can
+        decide the box height *before* the single insert call. Also returns the
+        widest single token: if that exceeds ``max_width``, wrapping alone cannot
+        make the text fit (the word itself overflows), so the caller should fall
+        back to font shrinking instead.
+
+        Args:
+            fit_font: Pre-built ``fitz.Font`` used to measure widths.
+            text: The replacement text.
+            fontsize: Font size to measure at.
+            max_width: Usable line width (already padding-/ratio-adjusted).
+
+        Returns:
+            ``(line_count, longest_token_width)`` where ``line_count >= 1``.
+        """
+        words = text.split()
+        if not words:
+            return 1, 0.0
+
+        space_w = fit_font.text_length(" ", fontsize=fontsize)
+        longest_token = 0.0
+        lines = 1
+        current = 0.0
+
+        for word in words:
+            word_w = fit_font.text_length(word, fontsize=fontsize)
+            longest_token = max(longest_token, word_w)
+            if current <= 0.0:
+                current = word_w  # first word on a line always fits the line
+            elif current + space_w + word_w <= max_width:
+                current += space_w + word_w  # append to current line
+            else:
+                lines += 1  # wrap onto a new line
+                current = word_w
+
+        return lines, longest_token
 
     def _insert_text_with_autofit(
         self,
@@ -389,31 +467,85 @@ class OperationApplicator:
         color: Tuple[float, float, float],
         font_flags: int = 0,
         op_index: int = -1,
+        warnings: Optional[List[OpWarning]] = None,
     ) -> None:
         """
-        Insert text with automatic width-based font fitting and metadata support.
+        Insert text, preferring word-wrap over font shrinking.
+
+        Strategy (see text-wrap-replace design):
+        1. Fits on one line at its intended size  -> insert unchanged.
+        2. Does not fit -> try wrapping onto multiple lines by expanding the
+           box downward (font size preserved). Used when every word fits the
+           width and there is vertical room before the page edge.
+        3. Wrapping cannot help (an unbreakable word wider than the box, or not
+           enough vertical room) -> shrink the font (legacy behavior).
         """
         # Expand rect for better fit
         expanded_rect = fitz.Rect(
             rect.x0, rect.y0,
-            rect.x1 + 14, rect.y1 + 12
+            rect.x1 + TEXT_BOX_X_PADDING,
+            rect.y1 + TEXT_BOX_Y_PADDING,
         )
 
         final_fontsize = initial_fontsize
+        autofit_shrunk = False
+        wrapped_lines = 0
         try:
-            # Simple binary search for width fit if needed
-            target_width = expanded_rect.width * 0.95
-            low, high = 6.0, float(initial_fontsize)
+            # PyMuPDF >= 1.26 removed Page.get_text_length(); width is now
+            # measured via fitz.Font.text_length(). Build the Font once and
+            # reuse it for every probe. A custom fontfile takes precedence
+            # over the Base-14 alias name.
+            fit_font = (
+                fitz.Font(fontname=fontname, fontfile=fontfile)
+                if fontfile
+                else fitz.Font(fontname=fontname)
+            )
+            target_width = expanded_rect.width * TEXT_AUTOFIT_WIDTH_RATIO
 
-            for _ in range(4):
-                mid = (low + high) / 2
-                text_width = page.get_text_length(
-                    text, fontname=fontname, fontsize=mid, fontfile=fontfile
-                )
-                if text_width > target_width: high = mid
-                else: low = mid
-            final_fontsize = low
-        except: pass
+            # Only act when the text does not already fit on one line at its
+            # intended size. Keeping the original size when it fits preserves
+            # visual parity and avoids spurious warnings.
+            if fit_font.text_length(text, fontsize=initial_fontsize) > target_width:
+                handled = False
+
+                # --- Wrap-first: expand height to fit multiple lines ---
+                if TEXT_WRAP_ENABLED:
+                    lines, longest_token = self._wrap_line_count(
+                        fit_font, text, initial_fontsize, target_width
+                    )
+                    # Wrapping only helps when there is more than one line AND
+                    # the widest word actually fits the line width.
+                    if lines > 1 and longest_token <= target_width:
+                        line_h = initial_fontsize * TEXT_WRAP_LINE_HEIGHT_FACTOR
+                        needed_h = lines * line_h + TEXT_BOX_Y_PADDING
+                        avail_h = (
+                            page.rect.y1 - TEXT_WRAP_BOTTOM_MARGIN
+                        ) - expanded_rect.y0
+                        if needed_h <= avail_h:
+                            # Grow the box downward; keep the original font size.
+                            expanded_rect = fitz.Rect(
+                                expanded_rect.x0, expanded_rect.y0,
+                                expanded_rect.x1, expanded_rect.y0 + needed_h,
+                            )
+                            wrapped_lines = lines
+                            handled = True
+
+                # --- Fallback: width-based font shrink via binary search ---
+                if not handled:
+                    low, high = TEXT_AUTOFIT_MIN_FONT_SIZE, float(initial_fontsize)
+                    for _ in range(TEXT_AUTOFIT_ITERATIONS):
+                        mid = (low + high) / 2
+                        if fit_font.text_length(text, fontsize=mid) > target_width:
+                            high = mid
+                        else:
+                            low = mid
+                    final_fontsize = low
+                    autofit_shrunk = True
+        except (RuntimeError, ValueError, TypeError, FileNotFoundError) as exc:
+            self.logger.warning(
+                "Text autofit calculation failed; using initial fontsize "
+                f"{initial_fontsize:.2f}pt: {exc}"
+            )
 
         # Try insert_textbox for better layout handling
         result = page.insert_textbox(
@@ -436,7 +568,37 @@ class OperationApplicator:
                 fontname, final_fontsize,
                 fontfile, color, rect,
                 op_index=op_index,
+                warnings=warnings,
             )
+        elif autofit_shrunk and warnings is not None:
+            # autofit already brought the text inside the box by reducing the
+            # font size; surface that as a non-blocking shrink warning so the
+            # user knows the replacement was scaled down.
+            warnings.append(OpWarning(
+                op_index=op_index,
+                severity="warn",
+                code="text.shrunk",
+                detail={
+                    "fontsize_from": round(initial_fontsize, 2),
+                    "fontsize_to": round(final_fontsize, 2),
+                    "text_len": len(text),
+                    "rect": (rect.x0, rect.y0, rect.x1, rect.y1),
+                },
+            ))
+        elif wrapped_lines > 1 and warnings is not None:
+            # Text was preserved at its intended size by wrapping onto multiple
+            # lines. This is a successful, non-blocking outcome (info severity).
+            warnings.append(OpWarning(
+                op_index=op_index,
+                severity="info",
+                code="text.wrapped",
+                detail={
+                    "lines": wrapped_lines,
+                    "fontsize": round(final_fontsize, 2),
+                    "text_len": len(text),
+                    "rect": (rect.x0, rect.y0, rect.x1, rect.y1),
+                },
+            ))
     def _insert_with_shrink(
         self,
         page: fitz.Page,
@@ -448,11 +610,12 @@ class OperationApplicator:
         color: Tuple[float, float, float],
         original_rect: fitz.Rect,
         op_index: int = -1,
+        warnings: Optional[List[OpWarning]] = None,
     ) -> None:
         """
         Fallback: shrink font until text fits.
 
-        Tries up to 4 iterations of 15% shrinking. If still doesn't fit,
+        Tries a configured number of shrink iterations. If still doesn't fit,
         logs a warning but continues.
 
         Args:
@@ -467,8 +630,8 @@ class OperationApplicator:
         """
         fallback_size = initial_size
 
-        for iteration in range(4):
-            fallback_size = max(8, fallback_size * 0.85)
+        for _ in range(TEXT_SHRINK_ITERATIONS):
+            fallback_size = max(TEXT_SHRINK_MIN_FONT_SIZE, fallback_size * TEXT_SHRINK_FACTOR)
 
             result = page.insert_textbox(
                 expanded_rect,
@@ -486,8 +649,8 @@ class OperationApplicator:
                     f"rect=({original_rect.x0:.1f},{original_rect.y0:.1f},"
                     f"{original_rect.x1:.1f},{original_rect.y1:.1f}) text_len={len(text)}"
                 )
-                if hasattr(self, 'current_warnings'):
-                    self.current_warnings.append(OpWarning(
+                if warnings is not None:
+                    warnings.append(OpWarning(
                         op_index=op_index,
                         severity="warn",
                         code="text.shrunk",
@@ -501,14 +664,14 @@ class OperationApplicator:
                     ))
                 return
 
-        # Still failed after 4 shrinks
+        # Still failed after configured shrinks
         self.logger.warning(
             f"Text insertion failed at {fallback_size:.2f}pt (orig {initial_size:.2f}pt) "
             f"rect=({original_rect.x0:.1f},{original_rect.y0:.1f},"
             f"{original_rect.x1:.1f},{original_rect.y1:.1f}) text_len={len(text)}"
         )
-        if hasattr(self, 'current_warnings'):
-            self.current_warnings.append(OpWarning(
+        if warnings is not None:
+            warnings.append(OpWarning(
                 op_index=op_index,
                 severity="error",
                 code="text.overflow",

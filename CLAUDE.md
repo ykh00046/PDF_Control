@@ -207,6 +207,24 @@ _None currently tracked. Open a new item here if one surfaces._
 
 - ~~Long Text in Narrow Areas~~: Structured `OpWarning` surfaces shrink/overflow into status bar, history badge, and save-time guard (`app/operations_service.py:33-60`, `app/ui.py:780-822`)
 
+### Added (2026-06-08, pdf-encryption PDCA)
+
+- **Password protection + permissions**: New pure, mypy-strict `app/encryption.py` (`EncryptionSettings`) builds AES-256 `Document.save` kwargs (user/owner passwords + print/copy/modify/annotate permission bits) with an `is_active()` guard so an unprotected policy saves normally. Threaded through `pdf_engine.save_document_copy` → `document_session.save_document` → `controller.save_document` as an optional `encryption=` kwarg (100% backward compatible). After an encrypted save the session re-binds via `authenticate(unlock_password())`. UI: `app/encryption_dialog.py` + File → "Encrypt & Save As…" (Ctrl+Alt+S); shared save logic extracted to `file_handlers._commit_save`. Strict gate expanded to `app.encryption`. 191 tests pass.
+
+### Added (2026-06-02, page-merge-split PDCA)
+
+- **Document split + batch merge**: New `app/page_split.py` (pure, mypy-strict) provides `SplitMode` (SINGLE / EVERY_N / RANGES), `parse_page_ranges`, and `compute_split_groups`. `DocumentSession.split_document` writes one PDF per page-index group (read-only, source unchanged — same contract as `extract_pages`). `DocumentSession.merge_pdfs` inserts several PDFs in order; `merge_pdf` now delegates to it (backward-compatible). UI: `app/split_dialog.py` + a "Split" action in `PageManagerDialog`; merge now accepts multiple files. 177 tests pass.
+
+### Resolved (2026-06-02, text-wrap-replace PDCA)
+
+- ~~Long text shrunk to unreadable size / dropped~~: Replacement text that overflows one line now **word-wraps onto multiple lines** by expanding the box height within the page bound, preserving the intended font size. Font shrinking is now a fallback only for unbreakable words wider than the box or insufficient vertical room. New `text.wrapped` (info) warning surfaces in status bar + history badge. Controlled by `TEXT_WRAP_*` constants in `app/config.py`; core logic in `app/operations/applicator.py::_wrap_line_count` + `_insert_text_with_autofit`. 146 tests pass.
+
+### Resolved (2026-06-02, r2-quality-fixes PDCA)
+
+- ~~`get_text_length` API broken~~: PyMuPDF 1.26+ removed `Page.get_text_length`; replaced with `fitz.Font.text_length()` in `app/operations/applicator.py`. Recovered 11 failing tests.
+- ~~autofit shrink warning gap~~: autofit-driven font shrink now emits `text.shrunk` (previously only the fallback path did).
+- ~~mypy strict scope too narrow~~: gate expanded to `config`, `logger`, `path_helper`, `text_utils`, `text_metadata`, `fonts` (all 0 strict errors), enforced by `tests/test_mypy.py::test_strict_leaf_modules_pass_mypy`. Deferred: `document_session`, `model`, `pdf_engine` → `typing-legacy-core` cycle.
+
 ### Risks
 
 - Packaging with PyInstaller: Relative path/data bundling not yet tested

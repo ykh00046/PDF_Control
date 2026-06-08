@@ -9,6 +9,52 @@ from typing import Any, Dict
 from app.logger import get_logger
 from app.path_helper import get_config_path, get_resource_path
 
+PDF_POINTS_PER_INCH = 72
+BYTES_PER_MIB = 1024 * 1024
+RGBA_BYTES_PER_PIXEL = 4
+RGB_BYTES_PER_PIXEL = 3
+
+DEFAULT_REMOVE_SECTION_DPI = 300
+DEFAULT_REMOVE_SECTION_FORMAT = "jpeg"
+JPEG_QUALITY = 90
+
+FONT_FLAG_ITALIC = 2
+FONT_FLAG_SERIF = 4
+FONT_FLAG_MONOSPACE = 8
+FONT_FLAG_BOLD = 16
+
+# Encryption (password protection) dialog defaults — single source for the
+# default permission toggles shown in app/encryption_dialog.py.
+ENCRYPTION_DEFAULT_ALLOW_PRINT = True
+ENCRYPTION_DEFAULT_ALLOW_COPY = True
+ENCRYPTION_DEFAULT_ALLOW_MODIFY = True
+ENCRYPTION_DEFAULT_ALLOW_ANNOTATE = True
+
+TEXT_DEFAULT_FONT_SIZE = 12.0
+TEXT_DEFAULT_COLOR = (0.0, 0.0, 0.0)
+TEXT_PREVIEW_BLACK_COLOR = (0.15, 0.15, 0.15)
+TEXT_BOX_X_PADDING = 14
+TEXT_BOX_Y_PADDING = 12
+TEXT_AUTOFIT_WIDTH_RATIO = 0.95
+TEXT_AUTOFIT_MIN_FONT_SIZE = 6.0
+TEXT_AUTOFIT_ITERATIONS = 4
+TEXT_SHRINK_ITERATIONS = 4
+TEXT_SHRINK_MIN_FONT_SIZE = 8
+TEXT_SHRINK_FACTOR = 0.85
+TEXT_METADATA_RECT_HEIGHT_RATIO = 0.6
+TEXT_METADATA_MIN_FONT_SIZE = 8
+TEXT_METADATA_MAX_FONT_SIZE = 72
+
+# --- Text word-wrap (multiline replacement) ---
+# When a replacement string does not fit on a single line, prefer wrapping it
+# onto multiple lines (expanding the box downward) over shrinking the font.
+# Wrapping preserves readability; shrinking is kept only as a fallback for
+# cases where wrapping cannot help (an unbreakable word wider than the box, or
+# not enough vertical room before the page edge).
+TEXT_WRAP_ENABLED = True            # master switch for the wrap-first policy
+TEXT_WRAP_LINE_HEIGHT_FACTOR = 1.2  # line height = fontsize * this factor
+TEXT_WRAP_BOTTOM_MARGIN = 4.0       # keep at least this gap (pt) from page bottom
+
 DEFAULT_CONFIG = {
     "window": {
         "width": 1200,
@@ -107,7 +153,7 @@ def save_config(config: Dict[str, Any]) -> bool:
         return False
 
 
-def _deep_update(base_dict: Dict, update_dict: Dict) -> None:
+def _deep_update(base_dict: Dict[str, Any], update_dict: Dict[str, Any]) -> None:
     """
     Recursively update base_dict with values from update_dict.
 

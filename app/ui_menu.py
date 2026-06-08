@@ -50,6 +50,11 @@ class MenuBuilder:
         save_as_action.triggered.connect(win.save_file_as)
         file_menu.addAction(save_as_action)
 
+        save_encrypted_action = QAction(tr("menu.file.save_encrypted"), win)
+        save_encrypted_action.setShortcut("Ctrl+Alt+S")
+        save_encrypted_action.triggered.connect(win.save_file_encrypted)
+        file_menu.addAction(save_encrypted_action)
+
         file_menu.addSeparator()
 
         exit_action = QAction(tr("menu.file.exit"), win)
@@ -132,6 +137,13 @@ class MenuBuilder:
         page_manager_action.setShortcut("Ctrl+Shift+P")
         page_manager_action.triggered.connect(win.open_page_manager_dialog)
         tools_menu.addAction(page_manager_action)
+
+        tools_menu.addSeparator()
+
+        export_text_action = QAction(tr("menu.tools.export_text"), win)
+        export_text_action.setShortcut("Ctrl+Shift+T")
+        export_text_action.triggered.connect(win.open_text_export_dialog)
+        tools_menu.addAction(export_text_action)
 
     # --------------------------------------------------------------- Help
     def _build_help_menu(self) -> None:

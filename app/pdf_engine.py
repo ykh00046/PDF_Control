@@ -69,14 +69,23 @@ def save_document_copy(
     output_path: str,
     operations: Sequence,
     logger=None,
+    encryption=None,
 ) -> None:
-    """Save a copy of the source document with operations applied."""
+    """Save a copy of the source document with operations applied.
+
+    When ``encryption`` is an active :class:`~app.encryption.EncryptionSettings`,
+    its save kwargs (method, passwords, permissions) are merged into the save
+    call; otherwise the document is saved unencrypted.
+    """
     logger = logger or get_logger()
     document = None
     try:
         document = open_document(source_path)
         apply_document_operations(document, operations, mode=ApplyMode.SAVE, logger=logger)
-        document.save(output_path, garbage=3, deflate=True)
+        save_kwargs = {"garbage": 3, "deflate": True}
+        if encryption is not None:
+            save_kwargs.update(encryption.save_kwargs())
+        document.save(output_path, **save_kwargs)
     finally:
         if document is not None:
             document.close()

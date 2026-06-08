@@ -162,6 +162,11 @@ class StateUpdateMixin:
                         self.style().standardIcon(QStyle.SP_MessageBoxWarning)
                     )
                     item.setToolTip(tr("warn.history.badge_shrunk"))
+                elif sev == "info":
+                    item.setIcon(
+                        self.style().standardIcon(QStyle.SP_MessageBoxInformation)
+                    )
+                    item.setToolTip(tr("warn.history.badge_wrapped"))
 
             self.history_list_widget.addItem(item)
 

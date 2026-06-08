@@ -132,8 +132,10 @@ def test_warning_i18n_keys_present(lang):
         "warn.details.none",
         "warn.code.text.shrunk",
         "warn.code.text.overflow",
+        "warn.code.text.wrapped",
         "warn.history.badge_shrunk",
         "warn.history.badge_overflow",
+        "warn.history.badge_wrapped",
         "warn.save_with_errors.title",
         "warn.save_with_errors.body",
     }
