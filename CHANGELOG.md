@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Added opening of password-protected PDFs: when you open (or drag-and-drop) an encrypted PDF, a password prompt appears and retries on an incorrect password. Editing, preview, and saving then work as usual.
+- Added "Remove Protection (Decrypt)…" (File menu, Ctrl+Alt+D): saves a currently-open encrypted document as a plain, unencrypted PDF. The action is a no-op with a status hint when the document is not protected.
 - Added PDF encryption / password protection: File → "Encrypt & Save As…" (Ctrl+Alt+S) saves the document with AES-256 encryption, a user password (to open) and/or owner password (permissions), plus toggles to allow or deny printing, copying, modifying, and annotating. Leaving everything unset falls back to a normal unencrypted save; the existing "Save As…" is unchanged.
 - Added text export: save the whole document or the current page as a `.txt` or `.md` file (Tools → Export Text…, Ctrl+Shift+T). Markdown output adds `## Page N` headers. Source document is never modified.
 - Added page management advanced operations: duplicate, extract (save selected pages as a new PDF), and merge (insert another PDF).

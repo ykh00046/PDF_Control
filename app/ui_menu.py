@@ -55,6 +55,11 @@ class MenuBuilder:
         save_encrypted_action.triggered.connect(win.save_file_encrypted)
         file_menu.addAction(save_encrypted_action)
 
+        remove_protection_action = QAction(tr("menu.file.remove_protection"), win)
+        remove_protection_action.setShortcut("Ctrl+Alt+D")
+        remove_protection_action.triggered.connect(win.save_file_decrypted)
+        file_menu.addAction(remove_protection_action)
+
         file_menu.addSeparator()
 
         exit_action = QAction(tr("menu.file.exit"), win)

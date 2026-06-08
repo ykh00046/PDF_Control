@@ -21,12 +21,17 @@ class DocumentSession(QObject):
     history_changed = Signal()
     warnings_changed = Signal()
 
-    def __init__(self, file_path: str):
+    def __init__(self, file_path: str, password: Optional[str] = None):
         super().__init__()
         logger = get_logger()
         try:
-            self.doc: fitz.Document = open_document(file_path)
+            self.doc: fitz.Document = open_document(file_path, password=password)
             self.file_path = file_path
+            # Password used to unlock the source; threaded to every path that
+            # re-opens the source by file path (save, preview). Also drives the
+            # "Remove Protection" action and the encrypted-state indicator.
+            self._password: Optional[str] = password
+            self.is_encrypted: bool = password is not None
             self.pages: List[PageModel] = [PageModel(i) for i in range(self.doc.page_count)]
             self.history: List[Operation] = []
             self.redo_stack: List[Operation] = []
@@ -127,15 +132,20 @@ class DocumentSession(QObject):
             logger.info(f"Saving document: {len(self.history)} operations to apply")
             save_document_copy(
                 self.file_path, output_path, self.history,
-                logger=logger, encryption=encryption,
+                logger=logger, encryption=encryption, password=self._password,
             )
 
-            reloaded_doc = open_document(output_path)
-            # An encrypted file must be authenticated before its pages are
-            # accessible; rebind would otherwise see zero pages.
+            # The reload password matches whatever protection the *output* now
+            # carries: the new unlock password if we just encrypted, otherwise
+            # None (plain save / decrypt). This also keeps is_encrypted accurate.
             if encryption is not None and encryption.is_active():
-                reloaded_doc.authenticate(encryption.unlock_password())
+                new_password: Optional[str] = encryption.unlock_password()
+            else:
+                new_password = None
+            reloaded_doc = open_document(output_path, password=new_password)
             self._bind_document(reloaded_doc, output_path)
+            self._password = new_password
+            self.is_encrypted = new_password is not None
 
             self.history.clear()
             self.redo_stack.clear()

@@ -8,9 +8,10 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
-from PySide6.QtWidgets import QFileDialog, QMessageBox
+from PySide6.QtWidgets import QFileDialog, QInputDialog, QLineEdit, QMessageBox
 
 from app.config import save_config, set_config_value
+from app.encryption import IncorrectPassword, PasswordRequired
 from app.i18n import tr
 
 if TYPE_CHECKING:
@@ -42,7 +43,7 @@ class FileHandlerMixin:
             self, tr("dialog.open_pdf"), initial_dir, "PDF Files (*.pdf)"
         )
         if file_path:
-            if self.controller.load_document(file_path):
+            if self._load_with_password_prompt(file_path):
                 self.last_directory = os.path.dirname(file_path)
                 set_config_value(self.config, "last_directory", value=self.last_directory)
                 save_config(self.config)
@@ -50,6 +51,33 @@ class FileHandlerMixin:
             self.logger.info("User cancelled file selection")
             self.statusBar().showMessage(tr("status.cancelled_open"))
             self._update_edit_action_states()
+
+    def _load_with_password_prompt(self: "MainWindow", file_path: str) -> bool:  # type: ignore[misc]
+        """Load a PDF, prompting for a password when the source is encrypted.
+
+        Loops on an incorrect password until the user succeeds or cancels.
+        Returns True only on a successful load.
+        """
+        password = None
+        prompt = tr("dialog.password.prompt")
+        while True:
+            try:
+                return self.controller.load_document(file_path, password=password)
+            except PasswordRequired:
+                prompt = tr("dialog.password.prompt")
+            except IncorrectPassword:
+                prompt = tr("dialog.password.retry")
+
+            password, accepted = QInputDialog.getText(
+                self,
+                tr("dialog.password.title"),
+                prompt,
+                QLineEdit.Password,
+            )
+            if not accepted:
+                self.logger.info("User cancelled password entry")
+                self.statusBar().showMessage(tr("status.cancelled_open"))
+                return False
 
     def save_file_as(self: "MainWindow") -> bool:  # type: ignore[misc]
         return self._commit_save(encryption=None)
@@ -69,8 +97,27 @@ class FileHandlerMixin:
             return False
         return self._commit_save(encryption=dialog.get_settings())
 
-    def _commit_save(self: "MainWindow", encryption=None) -> bool:  # type: ignore[misc]
-        """Shared Save As… path: blocking-warning guard, path picker, write."""
+    def save_file_decrypted(self: "MainWindow") -> bool:  # type: ignore[misc]
+        """Remove protection: save the current encrypted document as a plain PDF.
+
+        Saving with ``encryption=None`` produces an unencrypted copy, so this
+        reuses the shared save path. Guarded so it only acts on a document that
+        was actually opened from a protected source.
+        """
+        if not self.controller.session:
+            self.statusBar().showMessage(tr("status.no_document_save"))
+            return False
+        if not self.controller.is_current_encrypted():
+            self.statusBar().showMessage(tr("status.not_encrypted"))
+            return False
+        return self._commit_save(encryption=None, decrypt=True)
+
+    def _commit_save(self: "MainWindow", encryption=None, decrypt=False) -> bool:  # type: ignore[misc]
+        """Shared Save As… path: blocking-warning guard, path picker, write.
+
+        ``decrypt=True`` is a cosmetic variant (suffix + status message) of a
+        plain save used by the Remove Protection action.
+        """
         if not self.controller.session:
             self.statusBar().showMessage(tr("status.no_document_save"))
             return False
@@ -89,8 +136,9 @@ class FileHandlerMixin:
                 self.statusBar().showMessage(tr("status.ready"))
                 return False
 
+        suffix = "_decrypted.pdf" if decrypt else "_edited.pdf"
         suggested_path = (
-            self.controller.session.file_path.replace(".pdf", "_edited.pdf")
+            self.controller.session.file_path.replace(".pdf", suffix)
             if self.controller.session.file_path
             else "untitled.pdf"
         )
@@ -107,10 +155,13 @@ class FileHandlerMixin:
                     else output_path
                 )
                 encrypted = encryption is not None and encryption.is_active()
-                self.statusBar().showMessage(
-                    tr("status.saved_encrypted", saved_path) if encrypted
-                    else tr("status.saved", saved_path)
-                )
+                if decrypt:
+                    status_msg = tr("status.decrypted", saved_path)
+                elif encrypted:
+                    status_msg = tr("status.saved_encrypted", saved_path)
+                else:
+                    status_msg = tr("status.saved", saved_path)
+                self.statusBar().showMessage(status_msg)
                 self.logger.info("User saved document successfully")
 
                 self.setWindowTitle(
@@ -173,7 +224,7 @@ class FileHandlerMixin:
             file_path = url.toLocalFile()
             if file_path.lower().endswith(".pdf"):
                 self.logger.info(f"PDF file dropped: {file_path}")
-                if self.controller.load_document(file_path):
+                if self._load_with_password_prompt(file_path):
                     self.last_directory = os.path.dirname(file_path)
                     set_config_value(self.config, "last_directory", value=self.last_directory)
                     save_config(self.config)

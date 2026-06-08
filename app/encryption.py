@@ -34,6 +34,23 @@ _BASE_PERMS: int = (
 ENCRYPT_METHOD: int = fitz.PDF_ENCRYPT_AES_256
 
 
+class EncryptedPDFError(Exception):
+    """Base error for opening a password-protected PDF.
+
+    Raised by the open path (:func:`app.pdf_engine.open_document`) so UI code
+    can distinguish "needs a password" from a generic open failure and react
+    by prompting the user instead of surfacing a hard error.
+    """
+
+
+class PasswordRequired(EncryptedPDFError):
+    """The PDF is encrypted and no password was supplied to unlock it."""
+
+
+class IncorrectPassword(EncryptedPDFError):
+    """The supplied password did not unlock the encrypted PDF."""
+
+
 @dataclass
 class EncryptionSettings:
     """User-chosen protection policy for a single save.

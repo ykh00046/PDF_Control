@@ -53,6 +53,7 @@ def run_render_job(job_path: str | Path) -> int:
             job["zoom_level"],
             output_path,
             logger=get_logger(),
+            password=job.get("password"),
         )
 
         result["success"] = True

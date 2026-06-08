@@ -31,6 +31,7 @@
 | Text Wrap Replace       | [text-wrap-replace.plan.md](01-plan/features/text-wrap-replace.plan.md)           | ✅ Approved    | 2026-06-02   |
 | Page Merge / Split      | [page-merge-split.plan.md](01-plan/features/page-merge-split.plan.md)             | ✅ Approved    | 2026-06-02   |
 | PDF Encryption          | [pdf-encryption.plan.md](01-plan/features/pdf-encryption.plan.md)                 | ✅ Approved    | 2026-06-08   |
+| PDF Open / Decrypt      | [pdf-open-decrypt.plan.md](01-plan/features/pdf-open-decrypt.plan.md)             | ✅ Approved    | 2026-06-08   |
 
 ### Design (02-design/)
 
@@ -42,6 +43,7 @@
 | Text Wrap Replace | [text-wrap-replace.design.md](02-design/features/text-wrap-replace.design.md) | ✅ Approved    | 2026-06-02   |
 | Page Merge / Split | [page-merge-split.design.md](02-design/features/page-merge-split.design.md)  | ✅ Approved    | 2026-06-02   |
 | PDF Encryption    | [pdf-encryption.design.md](02-design/features/pdf-encryption.design.md)       | ✅ Approved    | 2026-06-08   |
+| PDF Open / Decrypt | [pdf-open-decrypt.design.md](02-design/features/pdf-open-decrypt.design.md)  | ✅ Approved    | 2026-06-08   |
 
 ### Analysis (03-analysis/)
 
@@ -53,6 +55,7 @@
 | Text Export            | [text-export.analysis.md](03-analysis/features/text-export.analysis.md)           | ✅ Approved    | 2026-06-02   |
 | Page Merge / Split     | [page-merge-split.analysis.md](03-analysis/features/page-merge-split.analysis.md) | ✅ Approved    | 2026-06-02   |
 | PDF Encryption         | [pdf-encryption.analysis.md](03-analysis/features/pdf-encryption.analysis.md) | ✅ Approved    | 2026-06-08   |
+| PDF Open / Decrypt     | [pdf-open-decrypt.analysis.md](03-analysis/features/pdf-open-decrypt.analysis.md) | ✅ Approved    | 2026-06-08   |
 
 ### Report (04-report/)
 
@@ -64,6 +67,7 @@
 | Text Export             | [text-export.report.md](04-report/features/text-export.report.md) | ✅ Approved    | 2026-06-02   |
 | Page Merge / Split      | [page-merge-split.report.md](04-report/features/page-merge-split.report.md) | ✅ Approved    | 2026-06-02   |
 | PDF Encryption          | [pdf-encryption.report.md](04-report/features/pdf-encryption.report.md) | ✅ Approved    | 2026-06-08   |
+| PDF Open / Decrypt      | [pdf-open-decrypt.report.md](04-report/features/pdf-open-decrypt.report.md) | ✅ Approved    | 2026-06-08   |
 
 ---
 

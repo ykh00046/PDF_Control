@@ -101,6 +101,29 @@ def simple_pdf(tmp_path):
 
 
 @pytest.fixture
+def encrypted_pdf(tmp_path):
+    """Generate an AES-256 encrypted single-page PDF (user password 'open123').
+
+    Returns:
+        Path: Path to the password-protected PDF file.
+    """
+    pdf_path = tmp_path / "test_encrypted.pdf"
+
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+    page.insert_text((50, 100), "Secret content for decryption tests", fontsize=12)
+    doc.save(
+        pdf_path,
+        encryption=fitz.PDF_ENCRYPT_AES_256,
+        user_pw="open123",
+        owner_pw="open123",
+    )
+    doc.close()
+
+    return pdf_path
+
+
+@pytest.fixture
 def multipage_pdf(tmp_path):
     """
     Generate a multi-page PDF for testing.

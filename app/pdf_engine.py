@@ -12,15 +12,32 @@ from typing import Dict, Iterable, List, Sequence
 
 import fitz
 
+from app.encryption import IncorrectPassword, PasswordRequired
 from app.logger import get_logger
 from app.operations_service import ApplyMode, ApplyResult, OperationApplicator
 
 RENDER_DPI = 150
 
 
-def open_document(file_path: str) -> fitz.Document:
-    """Open a PDF document through the engine boundary."""
-    return fitz.open(file_path)
+def open_document(file_path: str, password: str | None = None) -> fitz.Document:
+    """Open a PDF document through the engine boundary.
+
+    For an encrypted document, ``password`` is used to authenticate. Raises
+    :class:`~app.encryption.PasswordRequired` when a password is needed but
+    none was given, and :class:`~app.encryption.IncorrectPassword` when the
+    supplied password does not unlock the file. A plain document ignores
+    ``password`` and opens normally (backward compatible).
+    """
+    doc = fitz.open(file_path)
+    if doc.needs_pass:
+        if password is None:
+            doc.close()
+            raise PasswordRequired(file_path)
+        # authenticate() returns 0 on failure, a positive bitfield on success.
+        if not doc.authenticate(password):
+            doc.close()
+            raise IncorrectPassword(file_path)
+    return doc
 
 
 def group_operations_by_page(operations: Sequence) -> Dict[int, List]:
@@ -70,17 +87,20 @@ def save_document_copy(
     operations: Sequence,
     logger=None,
     encryption=None,
+    password: str | None = None,
 ) -> None:
     """Save a copy of the source document with operations applied.
 
+    ``password`` unlocks an encrypted *source* before applying operations.
     When ``encryption`` is an active :class:`~app.encryption.EncryptionSettings`,
     its save kwargs (method, passwords, permissions) are merged into the save
-    call; otherwise the document is saved unencrypted.
+    call; otherwise the document is saved unencrypted. The two are independent:
+    a protected source can be saved as a plain copy (decrypt) and vice versa.
     """
     logger = logger or get_logger()
     document = None
     try:
-        document = open_document(source_path)
+        document = open_document(source_path, password=password)
         apply_document_operations(document, operations, mode=ApplyMode.SAVE, logger=logger)
         save_kwargs = {"garbage": 3, "deflate": True}
         if encryption is not None:
@@ -98,17 +118,19 @@ def render_page_preview(
     zoom_level: float,
     output_path: str | Path,
     logger=None,
+    password: str | None = None,
 ) -> ApplyResult | None:
     """Render a single page preview with operations applied.
 
-    Returns the ApplyResult from operation application so callers can surface
-    structured warnings (e.g. text-fit issues) to the UI.
+    ``password`` unlocks an encrypted source. Returns the ApplyResult from
+    operation application so callers can surface structured warnings (e.g.
+    text-fit issues) to the UI.
     """
     logger = logger or get_logger()
     source_doc = None
     preview_doc = None
     try:
-        source_doc = open_document(file_path)
+        source_doc = open_document(file_path, password=password)
         preview_doc = fitz.open()
         preview_doc.insert_pdf(source_doc, from_page=page_index, to_page=page_index)
 

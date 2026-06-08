@@ -2,6 +2,7 @@ from PySide6.QtCore import QObject, Signal
 from typing import Optional
 import fitz
 from app.model import DocumentSession, Operation, RedactDelete, RedactReplace, CropMargins, RemoveSectionAsImage
+from app.encryption import EncryptedPDFError
 from app.logger import get_logger
 
 class EditorController(QObject):
@@ -26,12 +27,21 @@ class EditorController(QObject):
         """Read-only access to the current session. Used by Viewer for rendering."""
         return self._session
 
-    def load_document(self, file_path: str) -> bool:
-        """Loads a new document session."""
+    def load_document(self, file_path: str, password: Optional[str] = None) -> bool:
+        """Loads a new document session.
+
+        ``password`` unlocks an encrypted PDF. Password-related failures
+        (:class:`~app.encryption.EncryptedPDFError`) are *re-raised* rather than
+        converted to an ``error_occurred`` signal, so the UI layer can drive a
+        retry/prompt loop. Other failures emit ``error_occurred`` and return
+        ``False`` as before.
+        """
         new_session = None
         try:
             self.logger.info(f"Controller loading document: {file_path}")
-            new_session = DocumentSession(file_path)
+            new_session = DocumentSession(file_path, password=password)
+        except EncryptedPDFError:
+            raise
         except Exception as e:
             self.logger.error(f"Failed to load document: {e}")
             self.error_occurred.emit(f"Failed to load document: {e}")
@@ -240,3 +250,7 @@ class EditorController(QObject):
 
     def has_document(self) -> bool:
         return self._session is not None
+
+    def is_current_encrypted(self) -> bool:
+        """True when the loaded document was opened from a protected source."""
+        return bool(self._session and self._session.is_encrypted)

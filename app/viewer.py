@@ -142,6 +142,11 @@ class PDFViewer(QGraphicsView):
             "output_path": str(image_path),
             "response_path": str(response_path),
         }
+        # An encrypted source can only be re-opened by the worker with its
+        # password. The job file lives in a temp dir and is deleted right
+        # after the render (see _cleanup_render_files).
+        if self.session.is_encrypted and self.session._password is not None:
+            payload["password"] = self.session._password
 
         with open(job_path, "w", encoding="utf-8") as handle:
             json.dump(payload, handle)
