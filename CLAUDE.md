@@ -207,6 +207,10 @@ _None currently tracked. Open a new item here if one surfaces._
 
 - ~~Long Text in Narrow Areas~~: Structured `OpWarning` surfaces shrink/overflow into status bar, history badge, and save-time guard (`app/operations_service.py:33-60`, `app/ui.py:780-822`)
 
+### Added (2026-06-08, replace-wrap-toggle PDCA)
+
+- **교체별 줄바꿈/축소 토글**: 선행 `text-wrap-replace`가 전역 상수(`TEXT_WRAP_ENABLED`)로만 제어하던 wrap-first 정책을 **교체 단위 사용자 선택**으로 노출. `RedactReplace`에 `wrap: Optional[bool]=None`(None=전역 따름 / True=줄바꿈 / False=폰트축소) 추가, `applicator._insert_text_with_autofit(wrap_enabled=...)`로 스레딩(기본값=`TEXT_WRAP_ENABLED`라 직접 호출 무영향). UI: `BatchReplaceDialog`에 "긴 텍스트 줄바꿈" 체크박스(기본 on) → `process_batch_replacements`가 `RedactReplace`로 전달. i18n `batch.use_wrap` 키. 100% 하위 호환. 195 tests pass.
+
 ### Added (2026-06-08, pdf-encryption PDCA)
 
 - **Password protection + permissions**: New pure, mypy-strict `app/encryption.py` (`EncryptionSettings`) builds AES-256 `Document.save` kwargs (user/owner passwords + print/copy/modify/annotate permission bits) with an `is_active()` guard so an unprotected policy saves normally. Threaded through `pdf_engine.save_document_copy` → `document_session.save_document` → `controller.save_document` as an optional `encryption=` kwarg (100% backward compatible). After an encrypted save the session re-binds via `authenticate(unlock_password())`. UI: `app/encryption_dialog.py` + File → "Encrypt & Save As…" (Ctrl+Alt+S); shared save logic extracted to `file_handlers._commit_save`. Strict gate expanded to `app.encryption`. 191 tests pass.

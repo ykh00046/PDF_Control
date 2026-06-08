@@ -141,6 +141,8 @@
   "batch.error.page_range.message": "잘못된 페이지 범위: {0}",
   "batch.use_fixed_font": "고정 폰트 크기 사용",
   "batch.use_fixed_font.tooltip": "일관된 폰트 크기 유지를 위해 자동 스케일링 비활성화",
+  "batch.use_wrap": "긴 텍스트 줄바꿈",
+  "batch.use_wrap.tooltip": "교체 텍스트가 길면 폰트를 줄이지 않고 여러 줄로 나눕니다",
   "batch.font_size": "크기:",
   "menu.tools.crop_page": "페이지 자르기...",
   "crop.dialog.title": "페이지 여백 자르기",

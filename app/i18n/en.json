@@ -141,6 +141,8 @@
   "batch.error.page_range.message": "Invalid page range: {0}",
   "batch.use_fixed_font": "Use fixed font size",
   "batch.use_fixed_font.tooltip": "Disable auto-scaling to maintain consistent font size",
+  "batch.use_wrap": "Wrap long text",
+  "batch.use_wrap.tooltip": "When the replacement is too long, wrap onto multiple lines instead of shrinking the font",
   "batch.font_size": "Size:",
   "menu.tools.crop_page": "Crop Page...",
   "crop.dialog.title": "Crop Page Margins",

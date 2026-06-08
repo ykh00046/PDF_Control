@@ -63,6 +63,7 @@ class DialogHandlerMixin:
             rect = r_data["rect"]
             new_text = r_data["new_text"]
             fontsize = r_data.get("fontsize") or 0
+            wrap = r_data.get("wrap")  # bool from dialog; None falls back to global
 
             operation = RedactReplace(
                 page_index,
@@ -70,6 +71,7 @@ class DialogHandlerMixin:
                 new_text,
                 fontfile=self.current_replacement_font_path,
                 fontsize=fontsize,
+                wrap=wrap,
             )
             # Controller emits operation_applied for each add — batching would
             # avoid repeat signal fan-out, but today the simple loop is

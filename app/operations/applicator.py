@@ -468,6 +468,7 @@ class OperationApplicator:
         font_flags: int = 0,
         op_index: int = -1,
         warnings: Optional[List[OpWarning]] = None,
+        wrap_enabled: bool = TEXT_WRAP_ENABLED,
     ) -> None:
         """
         Insert text, preferring word-wrap over font shrinking.
@@ -479,6 +480,12 @@ class OperationApplicator:
            width and there is vertical room before the page edge.
         3. Wrapping cannot help (an unbreakable word wider than the box, or not
            enough vertical room) -> shrink the font (legacy behavior).
+
+        Args:
+            wrap_enabled: Per-call word-wrap policy. Defaults to the global
+                ``TEXT_WRAP_ENABLED`` so direct callers keep legacy behavior;
+                ``apply_operations`` passes the per-operation override here.
+                When False, step 2 is skipped and the text shrinks to fit.
         """
         # Expand rect for better fit
         expanded_rect = fitz.Rect(
@@ -509,7 +516,7 @@ class OperationApplicator:
                 handled = False
 
                 # --- Wrap-first: expand height to fit multiple lines ---
-                if TEXT_WRAP_ENABLED:
+                if wrap_enabled:
                     lines, longest_token = self._wrap_line_count(
                         fit_font, text, initial_fontsize, target_width
                     )

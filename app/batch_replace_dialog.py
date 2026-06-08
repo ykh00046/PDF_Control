@@ -69,7 +69,14 @@ class BatchReplaceDialog(QDialog):
         self.font_size_spinbox.setSuffix(" pt")
         self.font_size_spinbox.setEnabled(False)  # Disabled by default
         font_layout.addWidget(self.font_size_spinbox)
-        
+
+        # Word-wrap policy: when checked (default), overflowing replacements
+        # wrap onto multiple lines; when unchecked, the font shrinks instead.
+        self.use_wrap_checkbox = QCheckBox(tr("batch.use_wrap"))
+        self.use_wrap_checkbox.setToolTip(tr("batch.use_wrap.tooltip"))
+        self.use_wrap_checkbox.setChecked(True)
+        font_layout.addWidget(self.use_wrap_checkbox)
+
         font_layout.addStretch()
         main_layout.addLayout(font_layout)
 
@@ -247,6 +254,9 @@ class BatchReplaceDialog(QDialog):
         if self.use_fixed_font_checkbox.isChecked():
             fixed_fontsize = self.font_size_spinbox.value()
 
+        # Word-wrap policy chosen by the user for this batch.
+        wrap_enabled = self.use_wrap_checkbox.isChecked()
+
         for i, match in enumerate(self.matches):
             checkbox_item = self.matches_table.item(i, 3)
             if checkbox_item.checkState() == Qt.Checked:
@@ -254,7 +264,8 @@ class BatchReplaceDialog(QDialog):
                     "page_index": match["page_index"],
                     "rect": match["rect"],
                     "new_text": replace_text,
-                    "fontsize": fixed_fontsize  # None for auto, or fixed value
+                    "fontsize": fixed_fontsize,  # None for auto, or fixed value
+                    "wrap": wrap_enabled         # True=wrap, False=shrink
                 })
 
         if replacements_to_emit:
