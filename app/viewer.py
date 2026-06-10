@@ -143,10 +143,12 @@ class PDFViewer(QGraphicsView):
             "response_path": str(response_path),
         }
         # An encrypted source can only be re-opened by the worker with its
-        # password. The job file lives in a temp dir and is deleted right
-        # after the render (see _cleanup_render_files).
-        if self.session.is_encrypted and self.session._password is not None:
-            payload["password"] = self.session._password
+        # password. The password itself is sent over the stdin pipe (never
+        # written to the job file, so it cannot linger on disk after a
+        # crash); the job file only carries the announcement flag.
+        password = self.session.render_password()
+        if password is not None:
+            payload["password_stdin"] = True
 
         with open(job_path, "w", encoding="utf-8") as handle:
             json.dump(payload, handle)
@@ -159,10 +161,29 @@ class PDFViewer(QGraphicsView):
             process = subprocess.Popen(
                 [program, *arguments],
                 cwd=str(get_base_path()),
+                stdin=subprocess.PIPE if password is not None else subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.PIPE,
                 text=True,
+                # UTF-8 pinned for the stdin password line (worker side
+                # reconfigures to match). The worker's stderr may still be
+                # locale-encoded, so don't hard-fail on a mismatch there.
+                encoding="utf-8",
+                errors="replace",
             )
+            if password is not None and process.stdin is not None:
+                # One-line protocol matched by render_worker. A write failure
+                # means the worker died instantly; the response poller will
+                # surface that error, so just log here.
+                try:
+                    process.stdin.write(password + "\n")
+                except OSError as exc:
+                    get_logger().debug(f"Render stdin write failed: {exc}")
+                finally:
+                    try:
+                        process.stdin.close()
+                    except OSError:
+                        pass
         except OSError as exc:
             self._cleanup_render_files(job_path, response_path, image_path)
             self._active_render_process = None

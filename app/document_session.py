@@ -45,6 +45,15 @@ class DocumentSession(QObject):
             log_file_operation("open", file_path, success=False, error_msg=str(e))
             raise
 
+    def render_password(self) -> Optional[str]:
+        """Password for re-opening the encrypted source (e.g. render worker).
+
+        Returns the plaintext password, so it must never be written to disk;
+        pass it over an in-memory channel (stdin pipe). None when the
+        document is not encrypted.
+        """
+        return self._password if self.is_encrypted else None
+
     def _bind_document(self, doc: fitz.Document, file_path: str):
         """Swap the active document handle and rebuild per-page caches."""
         old_doc = getattr(self, "doc", None)

@@ -6,7 +6,7 @@
 > **Tech Stack**: PySide6 + PyMuPDF
 > **Status**: Active Development
 > **Created**: 2025-12-16
-> **Last Modified**: 2026-01-30
+> **Last Modified**: 2026-06-10
 
 ---
 
@@ -206,6 +206,12 @@ _None currently tracked. Open a new item here if one surfaces._
 ### Resolved (2026-04-15)
 
 - ~~Long Text in Narrow Areas~~: Structured `OpWarning` surfaces shrink/overflow into status bar, history badge, and save-time guard (`app/operations_service.py:33-60`, `app/ui.py:780-822`)
+
+### Resolved (2026-06-10, r4-bugfix PDCA)
+
+- ~~mypy 게이트 인코딩 회귀~~: `mypy.ini` 주석의 em-dash(U+2014)가 cp949 로케일에서 mypy 기동을 깨뜨려 `test_mypy.py` 2개 실패. ASCII 정리 + 파일 머리에 ASCII-only 재발방지 주석 (`mypy.ini:1-3`).
+- ~~preview≠save wrap 회귀~~: `Operation.from_dict`가 `RedactReplace.wrap`을 복원하지 않아 렌더 워커(미리보기)가 교체별 줄바꿈/축소 선택을 무시. `wrap=data.get("wrap", None)` 전달 (`app/operations/base.py:61`). 재발 방지: op 4종 `to_dict→from_dict` round-trip 테스트 (`tests/test_op_serialization.py`).
+- ~~렌더 비밀번호 평문 디스크 기록~~ (보안): 암호화 PDF 미리보기마다 비번이 temp의 평문 job JSON에 기록되던 것을 **stdin 파이프 1줄 프로토콜**로 전환(job 파일엔 `password_stdin` 플래그만). `DocumentSession.render_password()` 접근자 신설로 `_password` 캡슐화 (`app/viewer.py:149-186`, `app/render_worker.py:30-56`). 비암호화 경로 100% 불변. 221 tests pass.
 
 ### Added (2026-06-08, replace-wrap-toggle PDCA)
 

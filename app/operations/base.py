@@ -55,7 +55,10 @@ class Operation(ABC):
                 data.get("fontname", "helv"), data.get("fontsize", 0),
                 data.get("align", 0), data.get("fontfile", None),
                 tuple(color) if color else None,
-                data.get("font_flags", 0)
+                data.get("font_flags", 0),
+                # Absent key (pre-r4 serialized data) restores to None,
+                # i.e. "follow the global TEXT_WRAP_ENABLED default".
+                wrap=data.get("wrap", None)
             )
         elif op_type == "CropMargins":
             return CropMargins(

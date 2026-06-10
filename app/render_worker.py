@@ -8,6 +8,7 @@ does not run inside the GUI process.
 from __future__ import annotations
 
 import json
+import sys
 import time
 from pathlib import Path
 
@@ -26,10 +27,33 @@ def _deserialize_operations(operations_data):
     return operations
 
 
+def _read_password_from_stdin() -> str | None:
+    """Read the source password sent by the viewer over the stdin pipe.
+
+    One-line protocol: the viewer writes the password followed by "\\n" and
+    closes the pipe (passwords containing a newline are not supported). The
+    password is intentionally never written to the job file so it cannot
+    linger on disk after a crash.
+    """
+    stdin = sys.stdin
+    # Both ends pin UTF-8 so non-ASCII passwords survive locale differences.
+    reconfigure = getattr(stdin, "reconfigure", None)
+    if reconfigure is not None:
+        try:
+            reconfigure(encoding="utf-8")
+        except (OSError, ValueError):
+            pass
+    return stdin.readline().rstrip("\n") or None
+
+
 def run_render_job(job_path: str | Path) -> int:
     job_path = Path(job_path)
     with open(job_path, "r", encoding="utf-8") as handle:
         job = json.load(handle)
+
+    # Only touch stdin when the viewer announced a password; the plain
+    # (unencrypted) path must stay byte-for-byte identical to before.
+    password = _read_password_from_stdin() if job.get("password_stdin") else None
 
     response_path = Path(job["response_path"])
     output_path = Path(job["output_path"])
@@ -53,7 +77,7 @@ def run_render_job(job_path: str | Path) -> int:
             job["zoom_level"],
             output_path,
             logger=get_logger(),
-            password=job.get("password"),
+            password=password,
         )
 
         result["success"] = True
