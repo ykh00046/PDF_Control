@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Internal: added GitHub Actions CI (windows-latest), pinned all dependency versions in `requirements.txt` (including previously-missing test dependencies), and tidied the repository root (legacy documents archived, scratch scripts moved to `scripts/`).
 - Fixed: per-replacement word-wrap choice ("긴 텍스트 줄바꿈" checkbox) was ignored in the preview (but applied on save) because the render worker dropped the `wrap` field when rebuilding operations. Preview and save now match again.
 - Security: the source password for an encrypted PDF is no longer written to the temporary render job file on disk; it is now sent to the render worker over an in-memory stdin pipe, so it can no longer linger in the temp directory after a crash.
 - Fixed: the mypy gate (2 tests) failed on Korean Windows because of a non-ASCII character in `mypy.ini`; the file is now ASCII-only with a guard comment.

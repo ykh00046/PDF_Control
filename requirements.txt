@@ -1,5 +1,17 @@
-PySide6
-PyMuPDF
-pytest
-pytest-qt
-Pillow
+# Pinned to the versions verified locally on 2026-06-10 (221 tests pass,
+# Python 3.13). Upgrades should be deliberate: PyMuPDF 1.26 silently removed
+# Page.get_text_length and broke 11 tests (r2-quality-fixes), so unpinned
+# installs are a real regression vector here.
+
+# Runtime
+PySide6==6.10.1
+PyMuPDF==1.26.6
+Pillow==12.1.0
+
+# Test / QA (required by tests/: test_mypy.py runs mypy, timeout markers need
+# pytest-timeout, the CLAUDE.md drift guard needs PyYAML)
+pytest==8.4.2
+pytest-qt==4.5.0
+pytest-timeout==2.4.0
+mypy==1.19.0
+PyYAML==6.0.2

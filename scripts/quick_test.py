@@ -4,8 +4,12 @@ Quick integration test for OperationApplicator refactoring.
 Tests that the refactored code still works correctly.
 """
 
-import fitz
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+import fitz
 from app.model import DocumentSession, RedactReplace, RedactDelete
 from app.operations_service import OperationApplicator, ApplyMode
 

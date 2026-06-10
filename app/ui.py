@@ -12,7 +12,7 @@ live in dedicated modules:
 * :mod:`app.ui_menu` — :class:`MenuBuilder`, :class:`ShortcutBuilder`
 * :mod:`app.ui_toolbar` — :class:`ToolbarBuilder`
 * :mod:`app.ui_statusbar` — :class:`StatusBarManager`
-* :mod:`app.ui_handlers` — handler mixins inherited by MainWindow below
+* :mod:`app.handlers` — handler mixins inherited by MainWindow below
 """
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ from app.config import get_config_value, load_config
 from app.controller import EditorController
 from app.i18n import load_translations, tr
 from app.logger import get_logger, setup_logger
-from app.ui_handlers import (
+from app.handlers import (
     DialogHandlerMixin,
     EditHandlerMixin,
     FileHandlerMixin,

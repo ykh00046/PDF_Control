@@ -1,11 +1,12 @@
 
-import fitz
-import os
 import sys
-from PySide6.QtWidgets import QApplication
+from pathlib import Path
 
-# 프로젝트 루트 경로 추가
-sys.path.append(os.getcwd())
+# 프로젝트 루트 경로 추가 (파일 위치 기준 — cwd 무관)
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+import fitz
+from PySide6.QtWidgets import QApplication
 
 # QApplication 인스턴스 생성 (UI 위젯 테스트용)
 app = QApplication.instance() or QApplication(sys.argv)

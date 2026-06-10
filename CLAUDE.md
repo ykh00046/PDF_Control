@@ -207,6 +207,10 @@ _None currently tracked. Open a new item here if one surfaces._
 
 - ~~Long Text in Narrow Areas~~: Structured `OpWarning` surfaces shrink/overflow into status bar, history badge, and save-time guard (`app/operations_service.py:33-60`, `app/ui.py:780-822`)
 
+### Added (2026-06-10, r5-infra PDCA)
+
+- **CI + 의존성 고정 + 루트 정리**: `.github/workflows/ci.yml` 신설(windows-latest, Python 3.13, `QT_QPA_PLATFORM=offscreen`, `pytest tests -q` — mypy 게이트·i18n·drift 가드 포함). `requirements.txt` 전 항목 `==` 핀 고정 + 테스트 의존성(mypy, pytest-timeout, PyYAML) 명시. `app/ui_handlers.py` 셰임 제거(`ui.py`가 `app.handlers` 직수입). deprecated 루트 문서 3종 → `docs/archive/legacy-root/`, 스크래치 스크립트 5종 → `scripts/`(경로 부트스트랩 보정). pyproject/ruff는 별도 사이클로 보류.
+
 ### Resolved (2026-06-10, r4-bugfix PDCA)
 
 - ~~mypy 게이트 인코딩 회귀~~: `mypy.ini` 주석의 em-dash(U+2014)가 cp949 로케일에서 mypy 기동을 깨뜨려 `test_mypy.py` 2개 실패. ASCII 정리 + 파일 머리에 ASCII-only 재발방지 주석 (`mypy.ini:1-3`).
@@ -250,8 +254,9 @@ _None currently tracked. Open a new item here if one surfaces._
 
 ### Current Status
 
-- Legacy documents exist: `PROJECT_STATUS.md`, `IMPROVEMENT_PLAN.md`, `NEXT_STEPS.md`
-- **Migration needed**: Reorganize into bkit-standard PDCA docs
+- bkit-standard PDCA docs in use under `docs/` (see Target Structure below)
+- Legacy root documents (`PROJECT_STATUS.md`, `IMPROVEMENT_PLAN.md`, `NEXT_STEPS.md`)
+  were deprecated stubs; archived to `docs/archive/legacy-root/` (2026-06-10, r5-infra)
 
 ### Target Structure
 
@@ -373,6 +378,7 @@ Based on current status and improvement plan:
 
 ### Internal Documents
 
-- `PROJECT_STATUS.md`: Current status (legacy, to be migrated)
-- `IMPROVEMENT_PLAN.md`: Improvement roadmap (legacy, to be migrated)
-- `NEXT_STEPS.md`: Next action items (legacy, to be migrated)
+- `docs/03-analysis/features/current-state.analysis.md`: Current status
+- `docs/01-plan/features/improvement.plan.md`: Improvement roadmap
+- `docs/01-plan/features/next-steps.plan.md`: Next action items
+- `docs/archive/legacy-root/`: archived pre-PDCA root documents

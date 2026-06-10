@@ -1,10 +1,11 @@
 
-import fitz
-import os
 import sys
+from pathlib import Path
 
-# 프로젝트 루트 경로 추가
-sys.path.append(os.getcwd())
+# 프로젝트 루트 경로 추가 (파일 위치 기준 — cwd 무관)
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+import fitz
 
 from app.model import _extract_text_metadata, RedactReplace
 

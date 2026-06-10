@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  # Deterministic headless Qt on the runner; inherited by the render-worker
+  # subprocess as well.
+  QT_QPA_PLATFORM: offscreen
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r requirements.txt
+      # The suite already includes the mypy strict gate (tests/test_mypy.py),
+      # the i18n validation, and the CLAUDE.md drift guard.
+      - run: python -m pytest tests -q
