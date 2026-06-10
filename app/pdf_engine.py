@@ -7,14 +7,16 @@ UI/model layers do not each reimplement document mutation logic.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
-from typing import Dict, Iterable, List, Sequence
+from typing import Any, Dict, List, Sequence
 
 import fitz
 
-from app.encryption import IncorrectPassword, PasswordRequired
+from app.encryption import EncryptionSettings, IncorrectPassword, PasswordRequired
 from app.logger import get_logger
-from app.operations_service import ApplyMode, ApplyResult, OperationApplicator
+from app.operations import ApplyMode, ApplyResult, OperationApplicator
+from app.operations.base import Operation
 
 RENDER_DPI = 150
 
@@ -40,9 +42,9 @@ def open_document(file_path: str, password: str | None = None) -> fitz.Document:
     return doc
 
 
-def group_operations_by_page(operations: Sequence) -> Dict[int, List]:
+def group_operations_by_page(operations: Sequence[Operation]) -> Dict[int, List[Operation]]:
     """Group operation objects by page index."""
-    grouped: Dict[int, List] = {}
+    grouped: Dict[int, List[Operation]] = {}
     for operation in operations:
         grouped.setdefault(operation.page_index, []).append(operation)
     return grouped
@@ -50,10 +52,10 @@ def group_operations_by_page(operations: Sequence) -> Dict[int, List]:
 
 def apply_page_operations(
     page: fitz.Page,
-    operations: Sequence,
+    operations: Sequence[Operation],
     mode: ApplyMode,
-    logger=None,
-):
+    logger: logging.Logger | None = None,
+) -> ApplyResult | None:
     """Apply a list of operations to a single page."""
     if not operations:
         return None
@@ -64,9 +66,9 @@ def apply_page_operations(
 
 def apply_document_operations(
     document: fitz.Document,
-    operations: Sequence,
+    operations: Sequence[Operation],
     mode: ApplyMode,
-    logger=None,
+    logger: logging.Logger | None = None,
 ) -> None:
     """Apply grouped operations to every affected page in the document."""
     grouped = group_operations_by_page(operations)
@@ -84,9 +86,9 @@ def apply_document_operations(
 def save_document_copy(
     source_path: str,
     output_path: str,
-    operations: Sequence,
-    logger=None,
-    encryption=None,
+    operations: Sequence[Operation],
+    logger: logging.Logger | None = None,
+    encryption: EncryptionSettings | None = None,
     password: str | None = None,
 ) -> None:
     """Save a copy of the source document with operations applied.
@@ -102,7 +104,7 @@ def save_document_copy(
     try:
         document = open_document(source_path, password=password)
         apply_document_operations(document, operations, mode=ApplyMode.SAVE, logger=logger)
-        save_kwargs = {"garbage": 3, "deflate": True}
+        save_kwargs: Dict[str, Any] = {"garbage": 3, "deflate": True}
         if encryption is not None:
             save_kwargs.update(encryption.save_kwargs())
         document.save(output_path, **save_kwargs)
@@ -114,10 +116,10 @@ def save_document_copy(
 def render_page_preview(
     file_path: str,
     page_index: int,
-    operations: Sequence,
+    operations: Sequence[Operation],
     zoom_level: float,
     output_path: str | Path,
-    logger=None,
+    logger: logging.Logger | None = None,
     password: str | None = None,
 ) -> ApplyResult | None:
     """Render a single page preview with operations applied.

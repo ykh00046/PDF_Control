@@ -5,8 +5,10 @@ mypy.ini. A type-contract mismatch there silently broke 3 smoke tests on
 2026-04-14; this test blocks the same class of regression at CI time.
 
 Scope was widened from a single file to the whole package on 2026-05-27
-as part of the operations-restructure PDCA cycle, and again on 2026-06-02
-(r2-quality-fixes) to the clean leaf modules in STRICT_LEAF_MODULES.
+as part of the operations-restructure PDCA cycle, again on 2026-06-02
+(r2-quality-fixes) to the clean leaf modules in STRICT_LEAF_MODULES, and on
+2026-06-10 (r6-quality) to the former legacy core (pdf_engine,
+document_session, document_model, model).
 """
 
 import subprocess
@@ -28,6 +30,11 @@ STRICT_LEAF_MODULES = [
     "app/fonts.py",
     "app/page_split.py",
     "app/encryption.py",
+    # Legacy-core promotion (r6-quality, 2026-06-10)
+    "app/pdf_engine.py",
+    "app/document_session.py",
+    "app/document_model.py",
+    "app/model.py",
 ]
 
 

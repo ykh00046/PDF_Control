@@ -207,6 +207,12 @@ _None currently tracked. Open a new item here if one surfaces._
 
 - ~~Long Text in Narrow Areas~~: Structured `OpWarning` surfaces shrink/overflow into status bar, history badge, and save-time guard (`app/operations_service.py:33-60`, `app/ui.py:780-822`)
 
+### Resolved (2026-06-10, r6-quality PDCA)
+
+- ~~controller 예외 평탄화~~: 페이지 관리·내보내기 10개 메서드가 반복하던 `try/except Exception → log → emit` 보일러플레이트를 `_run_session_action` 가드 헬퍼 1곳으로 통합. `ValueError`(사용자 검증 거부)는 warning, 내부 오류는 error 로그로 분리 — emit 동작은 동일. 신규 `tests/test_controller_guard.py` 5종. 부수 수정: `merge_pdfs`/`duplicate_pages`/`export_text`의 int 반환이 0일 때 거짓 실패로 읽히지 않도록 결과 명시 폐기.
+- ~~applicator 함수 내 지연 import·과대 함수~~: `from app.model import` 6회를 모듈 상단 직수입(형제 모듈 + `text_metadata`)으로 통합(순환 없음 확인). `_insert_text_with_autofit`(~150줄)를 `_compute_text_layout`/`_grow_rect_for_wrap`/`_shrink_fontsize_to_width`로 분해 — 경고 코드·폴백 순서 동작 불변.
+- ~~typing-legacy-core~~: `pdf_engine`/`document_session`/`document_model`/`model` 4개 모듈 mypy strict 승격(`warn_return_any=False`, fitz 무스텁 정책은 operations 게이트와 동일). `operations_service` 셰임 경유 import를 `app.operations` 직수입으로 교체. STRICT_LEAF_MODULES 12개로 확대. 226 tests pass.
+
 ### Added (2026-06-10, r5-infra PDCA)
 
 - **CI + 의존성 고정 + 루트 정리**: `.github/workflows/ci.yml` 신설(windows-latest, Python 3.13, `QT_QPA_PLATFORM=offscreen`, `pytest tests -q` — mypy 게이트·i18n·drift 가드 포함). `requirements.txt` 전 항목 `==` 핀 고정 + 테스트 의존성(mypy, pytest-timeout, PyYAML) 명시. `app/ui_handlers.py` 셰임 제거(`ui.py`가 `app.handlers` 직수입). deprecated 루트 문서 3종 → `docs/archive/legacy-root/`, 스크래치 스크립트 5종 → `scripts/`(경로 부트스트랩 보정). pyproject/ruff는 별도 사이클로 보류.

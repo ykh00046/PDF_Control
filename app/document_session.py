@@ -9,10 +9,11 @@ import fitz
 from PySide6.QtCore import QObject, Signal
 
 from app.document_model import PageModel
+from app.encryption import EncryptionSettings
 from app.logger import get_logger, log_file_operation, log_operation
+from app.operations import ApplyMode
 from app.operations.base import Operation
 from app.operations.remove_section import RemoveSectionAsImage
-from app.operations_service import ApplyMode
 from app.pdf_engine import apply_page_operations, open_document, save_document_copy
 from app.text_export import build_text, export_text_to_file, resolve_indices
 
@@ -21,7 +22,7 @@ class DocumentSession(QObject):
     history_changed = Signal()
     warnings_changed = Signal()
 
-    def __init__(self, file_path: str, password: Optional[str] = None):
+    def __init__(self, file_path: str, password: Optional[str] = None) -> None:
         super().__init__()
         logger = get_logger()
         try:
@@ -54,7 +55,7 @@ class DocumentSession(QObject):
         """
         return self._password if self.is_encrypted else None
 
-    def _bind_document(self, doc: fitz.Document, file_path: str):
+    def _bind_document(self, doc: fitz.Document, file_path: str) -> None:
         """Swap the active document handle and rebuild per-page caches."""
         old_doc = getattr(self, "doc", None)
         self.doc = doc
@@ -64,7 +65,7 @@ class DocumentSession(QObject):
         if old_doc is not None and old_doc is not doc:
             old_doc.close()
 
-    def add_operation(self, operation: Operation):
+    def add_operation(self, operation: Operation) -> None:
         if isinstance(operation, RemoveSectionAsImage):
             already_exists = any(
                 isinstance(existing, RemoveSectionAsImage)
@@ -120,7 +121,7 @@ class DocumentSession(QObject):
             return op
         return None
 
-    def apply_operations_to_page(self, page: fitz.Page, page_index: int):
+    def apply_operations_to_page(self, page: fitz.Page, page_index: int) -> None:
         """
         Applies all operations for a page using OperationApplicator service.
 
@@ -135,7 +136,9 @@ class DocumentSession(QObject):
 
         apply_page_operations(page, operations_for_page, mode=ApplyMode.SAVE, logger=get_logger())
 
-    def save_document(self, output_path: str, encryption=None):
+    def save_document(
+        self, output_path: str, encryption: Optional[EncryptionSettings] = None
+    ) -> None:
         logger = get_logger()
         try:
             logger.info(f"Saving document: {len(self.history)} operations to apply")
@@ -167,7 +170,7 @@ class DocumentSession(QObject):
 
     # ── Page Management (direct document manipulation) ──────────────
 
-    def rotate_page(self, page_index: int, angle: int):
+    def rotate_page(self, page_index: int, angle: int) -> None:
         """Rotate a page by the given angle (must be multiple of 90)."""
         if angle % 90 != 0:
             raise ValueError(f"Rotation angle must be a multiple of 90, got {angle}")
@@ -177,7 +180,7 @@ class DocumentSession(QObject):
         self.modified = True
         get_logger().info(f"Rotated page {page_index} by {angle}° (now {page.rotation}°)")
 
-    def delete_pages(self, page_indices: List[int]):
+    def delete_pages(self, page_indices: List[int]) -> None:
         """Delete pages by indices (0-based). Indices are sorted descending to avoid shifting."""
         if len(page_indices) >= self.doc.page_count:
             raise ValueError("Cannot delete all pages")
@@ -198,7 +201,7 @@ class DocumentSession(QObject):
         self.history_changed.emit()
         get_logger().info(f"Deleted {len(page_indices)} page(s)")
 
-    def move_page(self, from_index: int, to_index: int):
+    def move_page(self, from_index: int, to_index: int) -> None:
         """Move a page from one position to another."""
         if from_index == to_index:
             return
@@ -207,7 +210,9 @@ class DocumentSession(QObject):
         self._rebuild_after_reorder()
         get_logger().info(f"Moved page {from_index} → {to_index}")
 
-    def insert_blank_page(self, after_index: int = -1, width: float = 595, height: float = 842):
+    def insert_blank_page(
+        self, after_index: int = -1, width: float = 595, height: float = 842
+    ) -> None:
         """Insert a blank page (default A4) after the specified index. -1 means at the end."""
         if after_index == -1:
             insert_at = self.doc.page_count
@@ -224,7 +229,7 @@ class DocumentSession(QObject):
         self.history_changed.emit()
         get_logger().info(f"Inserted blank page at index {insert_at}")
 
-    def _rebuild_after_reorder(self):
+    def _rebuild_after_reorder(self) -> None:
         """Rebuild page models after page reorder. Clears operation history as indices are invalidated."""
         self.history.clear()
         self.redo_stack.clear()
@@ -435,7 +440,7 @@ class DocumentSession(QObject):
             source_path=self.file_path,
         )
 
-    def close(self):
+    def close(self) -> None:
         if self.doc:
             log_file_operation("close", self.file_path, success=True)
             self.doc.close()

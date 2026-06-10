@@ -1,7 +1,6 @@
 from PySide6.QtCore import QObject, Signal
-from typing import Optional
-import fitz
-from app.model import DocumentSession, Operation, RedactDelete, RedactReplace, CropMargins, RemoveSectionAsImage
+from typing import Any, Callable, List, Optional
+from app.model import DocumentSession, Operation
 from app.encryption import EncryptedPDFError
 from app.logger import get_logger
 
@@ -26,6 +25,38 @@ class EditorController(QObject):
     def session(self) -> Optional[DocumentSession]:
         """Read-only access to the current session. Used by Viewer for rendering."""
         return self._session
+
+    def _run_session_action(
+        self,
+        action: str,
+        func: Callable[[DocumentSession], Any],
+        *,
+        applied: bool = True,
+        default: Any = False,
+    ) -> Any:
+        """Run a session mutation with unified guard + error reporting.
+
+        ValueError is an expected user-validation rejection (warning log);
+        anything else is an internal failure (error log). Both emit
+        ``error_occurred`` with the exception text and return ``default``.
+        On success, emits ``operation_applied`` when ``applied`` is True and
+        returns the session method's result (or True when it returns None).
+        """
+        if not self._session:
+            return default
+        try:
+            result = func(self._session)
+        except ValueError as e:
+            self.logger.warning(f"{action} rejected: {e}")
+            self.error_occurred.emit(str(e))
+            return default
+        except Exception as e:
+            self.logger.error(f"Failed to {action}: {e}")
+            self.error_occurred.emit(str(e))
+            return default
+        if applied:
+            self.operation_applied.emit()
+        return True if result is None else result
 
     def load_document(self, file_path: str, password: Optional[str] = None) -> bool:
         """Loads a new document session.
@@ -83,7 +114,9 @@ class EditorController(QObject):
         """Saves the modified document to the specified path.
 
         ``encryption`` is an optional :class:`~app.encryption.EncryptionSettings`
-        applied at save time (password protection + permissions).
+        applied at save time (password protection + permissions). Failures are
+        reported AND re-raised so save dialogs can react, which is why this
+        does not go through :meth:`_run_session_action`.
         """
         if not self._session:
             return
@@ -98,17 +131,8 @@ class EditorController(QObject):
 
     def add_operation(self, operation: Operation) -> bool:
         """Adds an operation to the current session."""
-        if not self._session:
-            return False
-        
-        try:
-            self._session.add_operation(operation)
-            self.operation_applied.emit()
-            return True
-        except Exception as e:
-            self.logger.error(f"Failed to add operation: {e}")
-            self.error_occurred.emit(f"Failed to add operation: {e}")
-            return False
+        return bool(self._run_session_action(
+            "add operation", lambda s: s.add_operation(operation)))
 
     def undo(self):
         """Performs undo on the current session."""
@@ -126,80 +150,35 @@ class EditorController(QObject):
 
     def rotate_page(self, page_index: int, angle: int) -> bool:
         """Rotate a page by the given angle (90, 180, 270)."""
-        if not self._session:
-            return False
-        try:
-            self._session.rotate_page(page_index, angle)
-            self.operation_applied.emit()
-            return True
-        except Exception as e:
-            self.logger.error(f"Failed to rotate page: {e}")
-            self.error_occurred.emit(str(e))
-            return False
+        return bool(self._run_session_action(
+            "rotate page", lambda s: s.rotate_page(page_index, angle)))
 
     def delete_pages(self, page_indices: list) -> bool:
         """Delete specified pages from the document."""
-        if not self._session:
-            return False
-        try:
-            self._session.delete_pages(page_indices)
-            self.operation_applied.emit()
-            return True
-        except Exception as e:
-            self.logger.error(f"Failed to delete pages: {e}")
-            self.error_occurred.emit(str(e))
-            return False
+        return bool(self._run_session_action(
+            "delete pages", lambda s: s.delete_pages(page_indices)))
 
     def move_page(self, from_index: int, to_index: int) -> bool:
         """Move a page from one position to another."""
-        if not self._session:
-            return False
-        try:
-            self._session.move_page(from_index, to_index)
-            self.operation_applied.emit()
-            return True
-        except Exception as e:
-            self.logger.error(f"Failed to move page: {e}")
-            self.error_occurred.emit(str(e))
-            return False
+        return bool(self._run_session_action(
+            "move page", lambda s: s.move_page(from_index, to_index)))
 
     def insert_blank_page(self, after_index: int = -1) -> bool:
         """Insert a blank A4 page."""
-        if not self._session:
-            return False
-        try:
-            self._session.insert_blank_page(after_index)
-            self.operation_applied.emit()
-            return True
-        except Exception as e:
-            self.logger.error(f"Failed to insert blank page: {e}")
-            self.error_occurred.emit(str(e))
-            return False
+        return bool(self._run_session_action(
+            "insert blank page", lambda s: s.insert_blank_page(after_index)))
 
     def duplicate_pages(self, page_indices: list) -> bool:
         """Duplicate selected pages (copy inserted directly after each original)."""
-        if not self._session:
-            return False
-        try:
-            self._session.duplicate_pages(page_indices)
-            self.operation_applied.emit()
-            return True
-        except Exception as e:
-            self.logger.error(f"Failed to duplicate pages: {e}")
-            self.error_occurred.emit(str(e))
-            return False
+        def run(s: DocumentSession) -> None:
+            s.duplicate_pages(page_indices)  # int result discarded: 0 must not read as failure
+        return bool(self._run_session_action("duplicate pages", run))
 
     def extract_pages(self, page_indices: list, output_path: str) -> bool:
         """Extract selected pages to a new PDF (source document unchanged)."""
-        if not self._session:
-            return False
-        try:
-            self._session.extract_pages(page_indices, output_path)
-            return True
-        except Exception as e:
-            self.logger.error(f"Failed to extract pages: {e}")
-            self.error_occurred.emit(str(e))
-            return False
+        return bool(self._run_session_action(
+            "extract pages", lambda s: s.extract_pages(page_indices, output_path),
+            applied=False))
 
     def merge_pdf(self, source_path: str, after_index: int = -1) -> bool:
         """Insert pages from another PDF after after_index (-1 = end of document)."""
@@ -207,42 +186,26 @@ class EditorController(QObject):
 
     def merge_pdfs(self, source_paths: list, after_index: int = -1) -> bool:
         """Insert pages from several PDFs (in order) after after_index (-1 = end)."""
-        if not self._session:
-            return False
-        try:
-            self._session.merge_pdfs(source_paths, after_index)
-            self.operation_applied.emit()
-            return True
-        except Exception as e:
-            self.logger.error(f"Failed to merge PDFs: {e}")
-            self.error_occurred.emit(str(e))
-            return False
+        def run(s: DocumentSession) -> None:
+            s.merge_pdfs(source_paths, after_index)  # int result discarded: 0 must not read as failure
+        return bool(self._run_session_action("merge PDFs", run))
 
-    def split_document(self, output_dir: str, groups: list, base_name=None) -> list:
+    def split_document(self, output_dir: str, groups: list, base_name=None) -> List[str]:
         """Split the document into multiple PDFs (source unchanged).
 
         Returns the list of written file paths, or an empty list on failure.
         """
-        if not self._session:
-            return []
-        try:
-            return self._session.split_document(output_dir, groups, base_name)
-        except Exception as e:
-            self.logger.error(f"Failed to split document: {e}")
-            self.error_occurred.emit(str(e))
-            return []
+        result = self._run_session_action(
+            "split document",
+            lambda s: s.split_document(output_dir, groups, base_name),
+            applied=False, default=[])
+        return result if isinstance(result, list) else []
 
     def export_text(self, output_path: str, page_indices=None, fmt: str = "txt") -> bool:
         """Export page/document text to a txt or md file (source unchanged)."""
-        if not self._session:
-            return False
-        try:
-            self._session.export_text(output_path, page_indices, fmt)
-            return True
-        except Exception as e:
-            self.logger.error(f"Failed to export text: {e}")
-            self.error_occurred.emit(str(e))
-            return False
+        def run(s: DocumentSession) -> None:
+            s.export_text(output_path, page_indices, fmt)  # int result discarded: 0 chars is still success
+        return bool(self._run_session_action("export text", run, applied=False))
 
     def _on_history_changed(self):
         """Relay session history changed signal."""
