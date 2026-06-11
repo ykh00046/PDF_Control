@@ -207,6 +207,11 @@ _None currently tracked. Open a new item here if one surfaces._
 
 - ~~Long Text in Narrow Areas~~: Structured `OpWarning` surfaces shrink/overflow into status bar, history badge, and save-time guard (`app/operations_service.py:33-60`, `app/ui.py:780-822`)
 
+### Resolved (2026-06-11, r7-history-policy PDCA)
+
+- ~~히스토리 정책 비대칭~~: delete/insert는 히스토리 인덱스를 보정하는데 move/duplicate/merge/드래그 정렬은 전부 폐기하던 비대칭 해소. `_remap_history_after_reorder(remap)` 공통 헬퍼로 **재배열 시 미저장 편집이 물리 페이지를 따라 보존**(redo는 무효화 — delete와 동일). move 리매핑은 PyMuPDF `move_page` 시맨틱 실측("원래 번호 기준 to 앞 삽입": `frm<to→to-1`, `frm>to→to`) 기반. 신규 `DocumentSession.reorder_pages(new_order)`가 드래그 정렬을 캡슐화(`page_manager_dialog`의 `session.doc.select`+private 호출 제거). `_rebuild_after_reorder` 삭제.
+- ~~RemoveSection 가짜 진행률~~: 2026-06-10 검토 H3 재검증 결과 op 추가는 즉시 완료(무거운 렌더는 이미 렌더 워커 서브프로세스에서 비동기)였고, 25/50/75 진행률은 실제 작업과 무관한 장식 — QProgressDialog 제거, 미사용 i18n 키 6종(en/ko) 정리. 235 tests pass.
+
 ### Resolved (2026-06-10, r6-quality PDCA)
 
 - ~~controller 예외 평탄화~~: 페이지 관리·내보내기 10개 메서드가 반복하던 `try/except Exception → log → emit` 보일러플레이트를 `_run_session_action` 가드 헬퍼 1곳으로 통합. `ValueError`(사용자 검증 거부)는 warning, 내부 오류는 error 로그로 분리 — emit 동작은 동일. 신규 `tests/test_controller_guard.py` 5종. 부수 수정: `merge_pdfs`/`duplicate_pages`/`export_text`의 int 반환이 0일 때 거짓 실패로 읽히지 않도록 결과 명시 폐기.
@@ -253,6 +258,7 @@ _None currently tracked. Open a new item here if one surfaces._
 
 - Packaging with PyInstaller: Relative path/data bundling not yet tested
 - Memory usage: Large section removal with high DPI - mitigated via auto-cap, monitor logs
+- Save-time operation application is synchronous on the UI thread (all ops, incl. high-DPI RemoveSection) — a save with heavy pending ops can block the UI for seconds. Async save (worker + session rebind) is a candidate for a future cycle. (noted 2026-06-11, r7-history-policy)
 
 ---
 

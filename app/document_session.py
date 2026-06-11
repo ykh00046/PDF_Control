@@ -2,8 +2,9 @@
 
 Split out of the former monolithic ``app/model.py`` (model-restructure).
 """
+import bisect
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import fitz
 from PySide6.QtCore import QObject, Signal
@@ -202,12 +203,32 @@ class DocumentSession(QObject):
         get_logger().info(f"Deleted {len(page_indices)} page(s)")
 
     def move_page(self, from_index: int, to_index: int) -> None:
-        """Move a page from one position to another."""
+        """Move a page from one position to another.
+
+        Pending history follows the moved pages (indices are remapped, not
+        discarded). PyMuPDF semantics: the page is removed, then inserted
+        before page ``to_index`` of the ORIGINAL numbering -- so its final
+        position is ``to_index - 1`` when moving forward and ``to_index``
+        when moving backward (measured 2026-06-10, r7-history-policy).
+        """
         if from_index == to_index:
             return
         self.doc.move_page(from_index, to_index)
-        # Rebuild page models and adjust operation indices
-        self._rebuild_after_reorder()
+
+        def remap(p: int) -> int:
+            if from_index < to_index:
+                if p == from_index:
+                    return to_index - 1
+                if from_index < p < to_index:
+                    return p - 1
+            else:
+                if p == from_index:
+                    return to_index
+                if to_index <= p < from_index:
+                    return p + 1
+            return p
+
+        self._remap_history_after_reorder(remap)
         get_logger().info(f"Moved page {from_index} → {to_index}")
 
     def insert_blank_page(
@@ -229,20 +250,48 @@ class DocumentSession(QObject):
         self.history_changed.emit()
         get_logger().info(f"Inserted blank page at index {insert_at}")
 
-    def _rebuild_after_reorder(self) -> None:
-        """Rebuild page models after page reorder. Clears operation history as indices are invalidated."""
-        self.history.clear()
+    def _remap_history_after_reorder(self, remap: Callable[[int], int]) -> None:
+        """Reindex pending operations after a page reorder/duplication/merge.
+
+        Policy unified with delete_pages/insert_blank_page (r7-history-policy):
+        history follows the physical page it was attached to instead of being
+        discarded; redo entries are invalidated because their indices no
+        longer apply.
+        """
+        for op in self.history:
+            op.page_index = remap(op.page_index)
         self.redo_stack.clear()
         self.pages = [PageModel(i) for i in range(self.doc.page_count)]
         self.modified = True
         self.history_changed.emit()
+
+    def reorder_pages(self, new_order: List[int]) -> None:
+        """Reorder pages to the given permutation of current indices.
+
+        ``new_order[i]`` is the current index of the page that should end up
+        at position ``i`` (same contract as ``Document.select``). Pending
+        history follows each physical page; redo entries are invalidated.
+
+        Raises:
+            ValueError: ``new_order`` is not a permutation of all page indices.
+        """
+        page_count = self.doc.page_count
+        if sorted(new_order) != list(range(page_count)):
+            raise ValueError("new_order must be a permutation of all page indices")
+        if new_order == list(range(page_count)):
+            return
+        self.doc.select(new_order)
+        position_of = {old: new for new, old in enumerate(new_order)}
+        self._remap_history_after_reorder(lambda p: position_of[p])
+        get_logger().info(f"Reordered pages: {new_order}")
 
     def duplicate_pages(self, page_indices: List[int]) -> int:
         """Duplicate the given pages, inserting each copy directly after the original.
 
         Indices are 0-based. Duplication is processed in descending order so
         that earlier indices remain valid while later ones expand.
-        Pending edit history is invalidated because page indices shift.
+        Pending history follows the ORIGINAL pages (a copy starts with no
+        pending edits); indices after each insertion point are remapped.
         """
         if not page_indices:
             raise ValueError("page_indices must not be empty")
@@ -256,7 +305,14 @@ class DocumentSession(QObject):
             current_count = self.doc.page_count
             target = idx + 1 if idx + 1 < current_count else -1
             self.doc.copy_page(idx, target)
-        self._rebuild_after_reorder()
+
+        sorted_indices = sorted(page_indices)
+        # Each copy is inserted right AFTER its original, so an operation
+        # shifts by the number of duplicated indices strictly below it
+        # (an op on a duplicated page stays attached to the original).
+        self._remap_history_after_reorder(
+            lambda p: p + bisect.bisect_left(sorted_indices, p)
+        )
         get_logger().info(f"Duplicated {len(page_indices)} page(s)")
         return len(page_indices)
 
@@ -312,7 +368,8 @@ class DocumentSession(QObject):
             raise ValueError(f"after_index out of range: {after_index}")
 
         # Insertion cursor advances past each batch so order is preserved.
-        cursor = page_count if after_index == -1 else after_index + 1
+        insert_start = page_count if after_index == -1 else after_index + 1
+        cursor = insert_start
         total_added = 0
         for source_path in source_paths:
             try:
@@ -329,7 +386,11 @@ class DocumentSession(QObject):
             get_logger().info(
                 f"Merged {added} page(s) from {source_path}"
             )
-        self._rebuild_after_reorder()
+        # All insertions form one contiguous block starting at insert_start,
+        # so existing operations at/after it shift by the total page count.
+        self._remap_history_after_reorder(
+            lambda p: p + total_added if p >= insert_start else p
+        )
         get_logger().info(
             f"Merged {total_added} page(s) total from {len(source_paths)} file(s)"
         )

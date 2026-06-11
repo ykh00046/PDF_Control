@@ -434,10 +434,10 @@ class PageManagerDialog(QDialog):
         if new_order == list(range(len(new_order))):
             return
 
-        # Apply reorder using PyMuPDF's select method
+        # Apply reorder through the session so pending history is remapped
+        # (not discarded) and session invariants stay session-owned.
         try:
-            session.doc.select(new_order)
-            session._rebuild_after_reorder()
+            session.reorder_pages(new_order)
             self._load_thumbnails()
             self._mark_changed()
             self.logger.info(f"Pages reordered via drag-drop: {new_order}")

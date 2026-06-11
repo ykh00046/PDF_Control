@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Changed: unsaved edits (text replace/delete, crop, section removal) now survive page reordering — moving, duplicating, merging, or drag-reordering pages remaps the pending edit history onto the pages it belonged to instead of silently discarding it. The redo stack is still cleared (page indices change), matching the existing delete-page behavior.
+- Changed: removed the staged progress dialog from "Remove Section" — adding the operation completes instantly (the heavy rendering already runs asynchronously in the preview worker), so the 25/50/75% progress steps did not correspond to any real work.
 - Internal: unified the controller's error handling into a single guard (user-validation rejections vs internal failures now log at the correct level), decomposed the largest text-layout function, and promoted the document/session/engine core modules to the mypy strict gate.
 - Internal: added GitHub Actions CI (windows-latest), pinned all dependency versions in `requirements.txt` (including previously-missing test dependencies), and tidied the repository root (legacy documents archived, scratch scripts moved to `scripts/`).
 - Fixed: per-replacement word-wrap choice ("긴 텍스트 줄바꿈" checkbox) was ignored in the preview (but applied on save) because the render worker dropped the `wrap` field when rebuilding operations. Preview and save now match again.

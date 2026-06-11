@@ -120,8 +120,52 @@ class TestMovePage:
         session.move_page(0, 2)
         assert session.doc.page_count == 5
         assert session.modified is True
-        # History should be cleared (reorder invalidates indices)
-        assert len(session.history) == 0
+        session.close()
+
+    def test_move_preserves_history_forward(self, multi_page_pdf):
+        """r7-history-policy: reorder remaps history instead of discarding it.
+
+        move_page(0, 2) yields [P1, P0, P2, P3, P4] (PyMuPDF inserts before
+        the ORIGINAL page 2), so ops follow: 0->1, 1->0, 2..4 unchanged.
+        """
+        session = DocumentSession(multi_page_pdf)
+        ops = {p: RedactDelete(p, [fitz.Rect(0, 0, 100, 100)]) for p in (0, 1, 2)}
+        for op in ops.values():
+            session.add_operation(op)
+        session.move_page(0, 2)
+        assert ops[0].page_index == 1
+        assert ops[1].page_index == 0
+        assert ops[2].page_index == 2
+        assert len(session.history) == 3
+        session.close()
+
+    def test_move_preserves_history_backward(self, multi_page_pdf):
+        """move_page(4, 1) yields [P0, P4, P1, P2, P3]: 4->1, 1..3 shift +1."""
+        session = DocumentSession(multi_page_pdf)
+        ops = {p: RedactDelete(p, [fitz.Rect(0, 0, 100, 100)]) for p in (1, 4)}
+        for op in ops.values():
+            session.add_operation(op)
+        session.move_page(4, 1)
+        assert ops[4].page_index == 1
+        assert ops[1].page_index == 2
+        session.close()
+
+    def test_move_history_follows_physical_page(self, multi_page_pdf):
+        """The remapped index must point at the SAME page content as before."""
+        session = DocumentSession(multi_page_pdf)
+        op = RedactDelete(3, [fitz.Rect(0, 0, 100, 100)])  # on "Page 4"
+        session.add_operation(op)
+        session.move_page(0, 4)  # [P1, P2, P3, P0, P4]
+        assert "Page 4" in session.doc[op.page_index].get_text()
+        session.close()
+
+    def test_move_clears_redo_stack(self, multi_page_pdf):
+        session = DocumentSession(multi_page_pdf)
+        session.add_operation(RedactDelete(0, [fitz.Rect(0, 0, 100, 100)]))
+        session.undo()
+        assert len(session.redo_stack) == 1
+        session.move_page(0, 2)
+        assert session.redo_stack == []  # indices invalidated, same as delete
         session.close()
 
     def test_move_same_position_noop(self, multi_page_pdf):
@@ -221,6 +265,47 @@ class TestDuplicatePages:
             session.duplicate_pages([99])
         session.close()
 
+    def test_duplicate_remaps_history(self, multi_page_pdf):
+        """r7-history-policy: ops shift by the duplicated indices below them;
+        an op on a duplicated page stays attached to the original."""
+        session = DocumentSession(multi_page_pdf)
+        op_on_dup = RedactDelete(0, [fitz.Rect(0, 0, 100, 100)])
+        op_after = RedactDelete(2, [fitz.Rect(0, 0, 100, 100)])
+        session.add_operation(op_on_dup)
+        session.add_operation(op_after)
+        session.duplicate_pages([0])  # [P0, P0', P1, P2, P3, P4]
+        assert op_on_dup.page_index == 0   # original keeps its edits
+        assert op_after.page_index == 3    # shifted past the inserted copy
+        assert "Page 3" in session.doc[op_after.page_index].get_text()
+        session.close()
+
+
+class TestReorderPages:
+    def test_reorder_remaps_history(self, multi_page_pdf):
+        """r7-history-policy: drag-drop permutation remaps pending ops."""
+        session = DocumentSession(multi_page_pdf)
+        op = RedactDelete(2, [fitz.Rect(0, 0, 100, 100)])  # on "Page 3"
+        session.add_operation(op)
+        session.reorder_pages([2, 0, 1, 3, 4])  # P2 first
+        assert op.page_index == 0
+        assert "Page 3" in session.doc[0].get_text()
+        assert session.modified is True
+        session.close()
+
+    def test_reorder_identity_is_noop(self, multi_page_pdf):
+        session = DocumentSession(multi_page_pdf)
+        session.reorder_pages([0, 1, 2, 3, 4])
+        assert session.modified is False
+        session.close()
+
+    def test_reorder_rejects_non_permutation(self, multi_page_pdf):
+        session = DocumentSession(multi_page_pdf)
+        with pytest.raises(ValueError, match="permutation"):
+            session.reorder_pages([0, 0, 1, 2, 3])
+        with pytest.raises(ValueError, match="permutation"):
+            session.reorder_pages([0, 1, 2])
+        session.close()
+
 
 class TestExtractPages:
     def test_extract_creates_file_with_correct_count(self, multi_page_pdf, tmp_path):
@@ -303,4 +388,20 @@ class TestMergePdf:
         session = DocumentSession(multi_page_pdf)
         with pytest.raises(ValueError):
             session.merge_pdf(str(other), after_index=99)
+        session.close()
+
+    def test_merge_remaps_history(self, multi_page_pdf, tmp_path):
+        """r7-history-policy: ops at/after the insertion cursor shift by the
+        inserted page count; ops before it are untouched."""
+        other = tmp_path / "other.pdf"
+        _make_simple_pdf(other, 2)
+        session = DocumentSession(multi_page_pdf)
+        op_before = RedactDelete(0, [fitz.Rect(0, 0, 100, 100)])
+        op_after = RedactDelete(2, [fitz.Rect(0, 0, 100, 100)])  # on "Page 3"
+        session.add_operation(op_before)
+        session.add_operation(op_after)
+        session.merge_pdf(str(other), after_index=0)  # 2 pages inserted at 1
+        assert op_before.page_index == 0
+        assert op_after.page_index == 4
+        assert "Page 3" in session.doc[op_after.page_index].get_text()
         session.close()

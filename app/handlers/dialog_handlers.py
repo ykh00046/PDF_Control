@@ -11,12 +11,10 @@ import subprocess
 import sys
 from typing import TYPE_CHECKING, Any, Dict, List
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
     QMessageBox,
-    QProgressDialog,
 )
 
 from app.batch_replace_dialog import BatchReplaceDialog
@@ -159,7 +157,14 @@ class DialogHandlerMixin:
     def apply_remove_section(  # type: ignore[misc]
         self: "MainWindow", settings: dict
     ) -> None:
-        """영역 제거 적용 (QProgressDialog 사용)."""
+        """영역 제거 적용.
+
+        Adding the operation only appends it to the pending history, which
+        completes instantly; the heavy rasterizing/merging happens later in
+        the render-worker subprocess (preview) or at save time. A staged
+        progress dialog here would not correspond to any real work
+        (removed in r7-history-policy).
+        """
         if not self.controller.session:
             return
 
@@ -174,52 +179,13 @@ class DialogHandlerMixin:
             f"dpi={dpi}, fmt={fmt}"
         )
 
-        progress = QProgressDialog(
-            tr("status.remove_processing"),
-            tr("batch.button.cancel"),
-            0,
-            100,
-            self,
-        )
-        progress.setWindowTitle(tr("progress.remove.title"))
-        progress.setWindowModality(Qt.WindowModal)
-        progress.setMinimumDuration(0)
-        progress.show()
-
         try:
-            progress.setLabelText(tr("progress.remove.rendering_top"))
-            progress.setValue(25)
-            QApplication.processEvents()
-            if progress.wasCanceled():
-                return
-
-            progress.setLabelText(tr("progress.remove.rendering_bottom"))
-            progress.setValue(50)
-            QApplication.processEvents()
-            if progress.wasCanceled():
-                return
-
-            progress.setLabelText(tr("progress.remove.merging"))
-            progress.setValue(75)
-            QApplication.processEvents()
-            if progress.wasCanceled():
-                return
-
             operation = RemoveSectionAsImage(
                 page_index, final_rect, dpi=dpi, format=fmt
             )
 
             if not self.controller.add_operation(operation):
                 return
-
-            progress.setLabelText(tr("progress.remove.replacing"))
-            progress.setValue(90)
-            QApplication.processEvents()
-
-            # 작업 추가 직후에는 미리보기를 생략 (성능 최적화).
-            # 줌/패닝 등을 하면 자동으로 프리뷰가 렌더링됩니다.
-
-            progress.setValue(100)
 
             self.last_selected_rect = None
             self.viewer.clear_selection()
@@ -234,8 +200,6 @@ class DialogHandlerMixin:
             QMessageBox.critical(
                 self, tr("dialog.error"), tr("error.remove_failed", str(e))
             )
-        finally:
-            progress.close()
 
     # --- Page manager ---------------------------------------------------
     def open_page_manager_dialog(self: "MainWindow") -> None:  # type: ignore[misc]
