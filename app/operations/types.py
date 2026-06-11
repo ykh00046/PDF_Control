@@ -6,7 +6,7 @@ circular references.
 from __future__ import annotations
 
 from enum import Enum
-from typing import Tuple, TypedDict
+from typing import Optional, Tuple, TypedDict
 
 
 class TextMetadata(TypedDict):
@@ -16,6 +16,9 @@ class TextMetadata(TypedDict):
     color: Tuple[float, float, float]
     font_flags: int
     fontname: str
+    # First-line baseline y of the source text (None when no text was found).
+    # Used to anchor the replacement on the original baseline (text-fidelity).
+    baseline: Optional[float]
 
 
 class ApplyMode(Enum):

@@ -30,6 +30,7 @@ from app.config import (
     TEXT_WRAP_ENABLED,
     TEXT_WRAP_LINE_HEIGHT_FACTOR,
 )
+from app.fonts import resolve_pdf_fontname
 from app.logger import get_logger
 from app.operations.crop import CropMargins
 from app.operations.redact import RedactDelete, RedactReplace
@@ -152,11 +153,13 @@ class OperationApplicator:
                       if isinstance(op, (RedactDelete, RedactReplace))]
 
         if redactions:
-            # Pre-Pass 1: Font embedding and alias mapping
-            font_aliases = self._prepare_fonts(page, redactions)
-
-            # Pre-Pass 2: Calculate optimal font sizes
+            # Pre-Pass 1: Extract source text metadata (size/color/font/baseline).
+            # Must run before fonts AND before the areas are cleared.
             font_sizes = self._calculate_font_sizes(page, redactions)
+
+            # Pre-Pass 2: Resolve fonts (explicit file > system match of the
+            # extracted source font > Base-14 alias) and embed files.
+            resolved_fonts = self._prepare_fonts(page, redactions, font_sizes)
 
             # Pass 2: Clear areas (mode-specific behavior)
             if mode == ApplyMode.SAVE:
@@ -166,7 +169,7 @@ class OperationApplicator:
 
             # Pass 3: Insert replacement text
             self._insert_replacement_text(
-                page, redactions, font_aliases, font_sizes, mode, warnings
+                page, redactions, resolved_fonts, font_sizes, mode, warnings
             )
 
         # Pass 4: Section removal. In preview this is still safe because the
@@ -200,33 +203,47 @@ class OperationApplicator:
     def _prepare_fonts(
         self,
         page: fitz.Page,
-        operations: List[Any]
-    ) -> Dict[int, str]:
+        operations: List[Any],
+        text_metadata: Dict[int, TextMetadata],
+    ) -> Dict[int, Tuple[str, Optional[str]]]:
         """
-        Embed custom fonts and return alias mapping.
+        Resolve each replacement's font and embed font files into the page.
 
-        For each RedactReplace operation with a custom font file,
-        this embeds the font into the page and returns the alias to use.
-
-        Args:
-            page: Page to embed fonts into
-            operations: List of operations (filtered to redactions)
+        Priority chain (text-fidelity):
+        1. ``op.fontfile`` -- an explicit user choice always wins.
+        2. System font matched from the EXTRACTED source font name/flags
+           (glyph coverage of the replacement text is verified). This is what
+           keeps the replacement in the document's own typeface instead of a
+           Base-14 approximation.
+        3. Base-14 alias derived from the extracted name/flags. (Previously
+           this used ``op.fontname``, which batch-created ops always left at
+           the "helv" default -- the extracted name is the faithful source.)
 
         Returns:
-            Dict mapping operation index to font alias string
+            Dict mapping operation index to ``(alias, fontfile)`` where
+            ``fontfile`` is None for the Base-14 case.
         """
-        font_aliases = {}
+        resolved: Dict[int, Tuple[str, Optional[str]]] = {}
 
         for i, op in enumerate(operations):
             if not isinstance(op, RedactReplace):
                 continue
 
-            alias = self._base14_font_alias(op.fontname, op.font_flags)
+            meta = text_metadata.get(i)
+            source_fontname = meta["fontname"] if meta else op.fontname
+            source_flags = meta["font_flags"] if meta else op.font_flags
 
+            fontfile: Optional[str] = None
             if op.fontfile and os.path.exists(op.fontfile):
-                # Use base filename as alias (e.g., "arial" from "arial.ttf")
-                alias = os.path.splitext(os.path.basename(op.fontfile))[0]
+                fontfile = op.fontfile
+            else:
+                fontfile = resolve_pdf_fontname(
+                    source_fontname, source_flags, must_cover=op.new_text
+                )
 
+            if fontfile:
+                # Use base filename as alias (e.g., "arial" from "arial.ttf")
+                alias = os.path.splitext(os.path.basename(fontfile))[0]
                 try:
                     # Check if font is already embedded on this page
                     is_embedded = any(
@@ -234,25 +251,27 @@ class OperationApplicator:
                     )
 
                     if not is_embedded:
-                        page.insert_font(fontname=alias, fontfile=op.fontfile)
+                        page.insert_font(fontname=alias, fontfile=fontfile)
                         self.logger.debug(
-                            f"Embedded font '{op.fontfile}' with alias '{alias}'"
+                            f"Embedded font '{fontfile}' with alias '{alias}'"
                         )
                     else:
                         self.logger.debug(
                             f"Font '{alias}' already present on page {page.number}"
                         )
-
                 except (OSError, IOError) as e:
                     self.logger.error(
-                        f"Font embedding failed for '{op.fontfile}': {e}. "
+                        f"Font embedding failed for '{fontfile}': {e}. "
                         f"Falling back to default."
                     )
-                    alias = op.fontname  # Fallback to default
+                    fontfile = None
+                    alias = self._base14_font_alias(source_fontname, source_flags)
+            else:
+                alias = self._base14_font_alias(source_fontname, source_flags)
 
-            font_aliases[i] = alias
+            resolved[i] = (alias, fontfile)
 
-        return font_aliases
+        return resolved
 
     def _calculate_font_sizes(
         self,
@@ -286,16 +305,19 @@ class OperationApplicator:
                     "color": TEXT_DEFAULT_COLOR,
                     "font_flags": 0,
                     "fontname": op.fontname,
+                    "baseline": None,
                 }
 
             if op.fontsize and op.fontsize > 0:
                 raw_meta["fontsize"] = op.fontsize
 
+            raw_baseline = raw_meta.get("baseline")
             metadata_map[i] = TextMetadata(
                 fontsize=float(raw_meta["fontsize"]),
                 color=tuple(raw_meta["color"]),
                 font_flags=int(raw_meta["font_flags"]),
                 fontname=str(raw_meta["fontname"]),
+                baseline=float(raw_baseline) if raw_baseline is not None else None,
             )
 
         return metadata_map
@@ -355,7 +377,7 @@ class OperationApplicator:
         self,
         page: fitz.Page,
         operations: List[Any],
-        font_aliases: Dict[int, str],
+        resolved_fonts: Dict[int, Tuple[str, Optional[str]]],
         text_metadata: Dict[int, TextMetadata],
         mode: ApplyMode,
         warnings: List[OpWarning],
@@ -363,8 +385,8 @@ class OperationApplicator:
         """
         Insert replacement text for RedactReplace operations.
 
-        Uses extracted metadata and fallback shrinking to ensure
-        text fits within the specified rectangles.
+        Uses extracted metadata, the resolved (matched/explicit) font, and
+        fallback shrinking to ensure text fits within the rectangles.
         """
         for i, op in enumerate(operations):
             if not isinstance(op, RedactReplace):
@@ -376,12 +398,15 @@ class OperationApplicator:
                 "color": TEXT_DEFAULT_COLOR,
                 "font_flags": 0,
                 "fontname": op.fontname,
+                "baseline": None,
             }
             meta = text_metadata.get(i, default_meta)
             final_fontsize = meta["fontsize"]
             text_color = meta["color"]
             font_flags = meta["font_flags"]
-            font_alias = font_aliases.get(i, meta["fontname"])
+            font_alias, fontfile = resolved_fonts.get(
+                i, (meta["fontname"], op.fontfile)
+            )
 
             # In preview mode, use slightly gray color if black is selected
             if mode == ApplyMode.PREVIEW and text_color == TEXT_DEFAULT_COLOR:
@@ -397,10 +422,11 @@ class OperationApplicator:
                 self._insert_text_with_autofit(
                     page, rect, op.new_text,
                     font_alias, final_fontsize,
-                    op.fontfile, text_color, font_flags,
+                    fontfile, text_color, font_flags,
                     op_index=i,
                     warnings=warnings,
                     wrap_enabled=wrap_enabled,
+                    baseline=meta["baseline"],
                 )
 
     def _wrap_line_count(
@@ -463,6 +489,7 @@ class OperationApplicator:
         op_index: int = -1,
         warnings: Optional[List[OpWarning]] = None,
         wrap_enabled: bool = TEXT_WRAP_ENABLED,
+        baseline: Optional[float] = None,
     ) -> None:
         """
         Insert text, preferring word-wrap over font shrinking.
@@ -480,10 +507,15 @@ class OperationApplicator:
                 ``TEXT_WRAP_ENABLED`` so direct callers keep legacy behavior;
                 ``apply_operations`` passes the per-operation override here.
                 When False, step 2 is skipped and the text shrinks to fit.
+            baseline: First-line baseline y of the source text. When given,
+                the insertion box is shifted so the replacement sits on the
+                original baseline (text-fidelity); None keeps the legacy
+                box-top placement.
         """
         expanded_rect, final_fontsize, wrapped_lines, autofit_shrunk = (
             self._compute_text_layout(
-                page, rect, text, fontname, initial_fontsize, fontfile, wrap_enabled
+                page, rect, text, fontname, initial_fontsize, fontfile,
+                wrap_enabled, baseline,
             )
         )
 
@@ -549,6 +581,7 @@ class OperationApplicator:
         initial_fontsize: float,
         fontfile: Optional[str],
         wrap_enabled: bool,
+        baseline: Optional[float] = None,
     ) -> Tuple[fitz.Rect, float, int, bool]:
         """
         Decide box geometry and font size before the single insert call.
@@ -559,6 +592,12 @@ class OperationApplicator:
         falls back to a width-based binary-search shrink when wrapping
         cannot help. Measurement failures fall back to the initial values
         (insert_textbox's own shrink fallback still applies downstream).
+
+        When ``baseline`` is given, the final box is shifted vertically so
+        the first inserted line sits on the source baseline
+        (``insert_textbox``'s first baseline lands at
+        ``y0 + ascender * fontsize``). Skipped when the shift would leave
+        the page or measurement failed.
 
         Returns:
             ``(expanded_rect, final_fontsize, wrapped_lines, autofit_shrunk)``
@@ -607,6 +646,20 @@ class OperationApplicator:
                         fit_font, text, initial_fontsize, target_width
                     )
                     autofit_shrunk = True
+
+            # --- Baseline anchoring (text-fidelity) ---
+            # insert_textbox puts the first baseline at y0 + ascender * size,
+            # so shifting the whole box re-seats the replacement exactly on
+            # the source baseline (uses the FINAL size in case of a shrink).
+            if baseline is not None:
+                anchored_y0 = baseline - fit_font.ascender * final_fontsize
+                dy = anchored_y0 - expanded_rect.y0
+                anchored_y1 = expanded_rect.y1 + dy
+                if anchored_y0 >= 0.0 and anchored_y1 <= page.rect.y1:
+                    expanded_rect = fitz.Rect(
+                        expanded_rect.x0, anchored_y0,
+                        expanded_rect.x1, anchored_y1,
+                    )
         except (RuntimeError, ValueError, TypeError, FileNotFoundError) as exc:
             self.logger.warning(
                 "Text autofit calculation failed; using initial fontsize "

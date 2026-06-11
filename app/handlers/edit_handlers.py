@@ -111,12 +111,36 @@ class EditHandlerMixin:
         return text
 
     def _resolve_replacement_font(  # type: ignore[misc]
-        self: "MainWindow", replacement_text: str = ""
+        self: "MainWindow",
+        replacement_text: str = "",
+        source_fontname: str = "",
+        source_flags: int = 0,
     ):
-        """Return font path, auto-selecting Korean fallback only when needed."""
+        """Return font path: user choice > source-font match > Korean fallback.
+
+        ``source_fontname``/``source_flags`` come from the extracted metadata
+        of the text being replaced; matching them keeps the replacement in
+        the document's own typeface (text-fidelity). The generic Korean
+        default remains the net for Hangul text whose source font is not
+        installed.
+        """
         font_path = self.current_replacement_font_path
         if font_path:
             return font_path
+
+        if source_fontname:
+            from app.fonts import resolve_pdf_fontname
+
+            matched = resolve_pdf_fontname(
+                source_fontname, source_flags, must_cover=replacement_text
+            )
+            if matched:
+                self.logger.info(
+                    f"Matched source font '{source_fontname}' -> "
+                    f"{os.path.basename(matched)}"
+                )
+                return matched
+
         if not contains_hangul(replacement_text):
             return None
         from app.fonts import get_default_korean_font_path
@@ -149,10 +173,12 @@ class EditHandlerMixin:
             return
 
         try:
-            font_path = self._resolve_replacement_font(replacement_text)
             from app.model import _extract_text_metadata
 
             meta = _extract_text_metadata(page, target_rect)
+            font_path = self._resolve_replacement_font(
+                replacement_text, meta["fontname"], meta["font_flags"]
+            )
             operation = RedactReplace(
                 page_index,
                 [target_rect],

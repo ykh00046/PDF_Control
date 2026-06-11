@@ -207,6 +207,10 @@ _None currently tracked. Open a new item here if one surfaces._
 
 - ~~Long Text in Narrow Areas~~: Structured `OpWarning` surfaces shrink/overflow into status bar, history badge, and save-time guard (`app/operations_service.py:33-60`, `app/ui.py:780-822`)
 
+### Resolved (2026-06-11, text-fidelity PDCA)
+
+- ~~교체 텍스트의 Base-14 강등·베이스라인 어긋남·크기 부풀림~~: 교체가 원본의 서체·크기·위치를 따라가도록 충실도 개선. (1) `fonts.resolve_pdf_fontname(name, flags, must_cover)` — 추출된 span 폰트명을 Windows 설치 폰트에 자동 매칭(서브셋 접두어/camelCase/스타일 변형/패밀리 폴백 + 글리프 커버리지 검증), applicator 우선순위 체인 `op.fontfile > 시스템 매칭 > Base-14(추출 메타 기준)`. **배치 교체가 항상 helv였던 버그**(op 기본값 `fontname="helv"`가 별칭 도출에 사용) 동시 해소. (2) `TextMetadata.baseline` 신설 — 삽입 박스를 `baseline − ascender×최종크기`로 평행이동해 원본 베이스라인에 정확 안착(실측 200.0→200.0). (3) `text_metadata`의 rect 기반 크기 하한이 추출값을 덮어쓰던 동작 제거(무텍스트 폴백으로 격하). preview=save는 applicator 단일 경로로 자동 보장. 254 tests pass. 후속 후보: PDF 임베디드 폰트 재사용(`doc.extract_font`).
+
 ### Resolved (2026-06-11, r7-history-policy PDCA)
 
 - ~~히스토리 정책 비대칭~~: delete/insert는 히스토리 인덱스를 보정하는데 move/duplicate/merge/드래그 정렬은 전부 폐기하던 비대칭 해소. `_remap_history_after_reorder(remap)` 공통 헬퍼로 **재배열 시 미저장 편집이 물리 페이지를 따라 보존**(redo는 무효화 — delete와 동일). move 리매핑은 PyMuPDF `move_page` 시맨틱 실측("원래 번호 기준 to 앞 삽입": `frm<to→to-1`, `frm>to→to`) 기반. 신규 `DocumentSession.reorder_pages(new_order)`가 드래그 정렬을 캡슐화(`page_manager_dialog`의 `session.doc.select`+private 호출 제거). `_rebuild_after_reorder` 삭제.
