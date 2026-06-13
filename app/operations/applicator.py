@@ -7,6 +7,7 @@ Design: Stateless service pattern for thread-safe operation application.
 """
 
 import os
+import zlib
 import fitz
 from typing import Any, List, Dict, Tuple, Optional
 
@@ -30,7 +31,7 @@ from app.config import (
     TEXT_WRAP_ENABLED,
     TEXT_WRAP_LINE_HEIGHT_FACTOR,
 )
-from app.fonts import resolve_pdf_fontname
+from app.fonts import extract_embedded_font, resolve_pdf_fontname
 from app.logger import get_logger
 from app.operations.crop import CropMargins
 from app.operations.redact import RedactDelete, RedactReplace
@@ -157,8 +158,9 @@ class OperationApplicator:
             # Must run before fonts AND before the areas are cleared.
             font_sizes = self._calculate_font_sizes(page, redactions)
 
-            # Pre-Pass 2: Resolve fonts (explicit file > system match of the
-            # extracted source font > Base-14 alias) and embed files.
+            # Pre-Pass 2: Resolve fonts (explicit file > system match >
+            # embedded program > Base-14). Extraction of an embedded program
+            # must happen BEFORE redactions remove the source text/resources.
             resolved_fonts = self._prepare_fonts(page, redactions, font_sizes)
 
             # Pass 2: Clear areas (mode-specific behavior)
@@ -166,6 +168,13 @@ class OperationApplicator:
                 self._apply_redactions_destructive(page, redactions)
             else:
                 self._apply_redactions_preview(page, redactions)
+
+            # Pass 2.5: Register resolved fonts on the page. Must happen
+            # AFTER apply_redactions, which strips font resources that no
+            # remaining text references (a pre-registered, not-yet-used
+            # alias would be dropped and the buffer-based insert would fail
+            # with "need font file or buffer").
+            resolved_fonts = self._register_fonts(page, resolved_fonts, font_sizes)
 
             # Pass 3: Insert replacement text
             self._insert_replacement_text(
@@ -205,25 +214,27 @@ class OperationApplicator:
         page: fitz.Page,
         operations: List[Any],
         text_metadata: Dict[int, TextMetadata],
-    ) -> Dict[int, Tuple[str, Optional[str]]]:
+    ) -> Dict[int, Tuple[str, Optional[str], Optional[bytes]]]:
         """
-        Resolve each replacement's font and embed font files into the page.
+        Resolve each replacement's font and register it on the page.
 
-        Priority chain (text-fidelity):
+        Priority chain (text-fidelity + embedded-font-reuse):
         1. ``op.fontfile`` -- an explicit user choice always wins.
         2. System font matched from the EXTRACTED source font name/flags
-           (glyph coverage of the replacement text is verified). This is what
-           keeps the replacement in the document's own typeface instead of a
-           Base-14 approximation.
-        3. Base-14 alias derived from the extracted name/flags. (Previously
+           (glyph coverage of the replacement text is verified).
+        3. The font program EMBEDDED in the PDF itself (covers source fonts
+           that are not installed on this machine; subset embeds are
+           rejected by the coverage probe).
+        4. Base-14 alias derived from the extracted name/flags. (Previously
            this used ``op.fontname``, which batch-created ops always left at
            the "helv" default -- the extracted name is the faithful source.)
 
         Returns:
-            Dict mapping operation index to ``(alias, fontfile)`` where
-            ``fontfile`` is None for the Base-14 case.
+            Dict mapping operation index to ``(alias, fontfile, fontbuffer)``
+            -- at most one of ``fontfile``/``fontbuffer`` is set; both are
+            None for the Base-14 case.
         """
-        resolved: Dict[int, Tuple[str, Optional[str]]] = {}
+        resolved: Dict[int, Tuple[str, Optional[str], Optional[bytes]]] = {}
 
         for i, op in enumerate(operations):
             if not isinstance(op, RedactReplace):
@@ -234,44 +245,89 @@ class OperationApplicator:
             source_flags = meta["font_flags"] if meta else op.font_flags
 
             fontfile: Optional[str] = None
+            fontbuffer: Optional[bytes] = None
             if op.fontfile and os.path.exists(op.fontfile):
                 fontfile = op.fontfile
             else:
                 fontfile = resolve_pdf_fontname(
                     source_fontname, source_flags, must_cover=op.new_text
                 )
+                if fontfile is None:
+                    fontbuffer = extract_embedded_font(
+                        page, source_fontname, must_cover=op.new_text
+                    )
 
             if fontfile:
                 # Use base filename as alias (e.g., "arial" from "arial.ttf")
                 alias = os.path.splitext(os.path.basename(fontfile))[0]
-                try:
-                    # Check if font is already embedded on this page
-                    is_embedded = any(
-                        font[3] == alias for font in page.get_fonts()
-                    )
+            elif fontbuffer:
+                # Content-derived alias: identical programs share an alias
+                # (registered once, reused), distinct programs never collide
+                # -- which matters when one batch replaces text in several
+                # different embedded fonts on the same page.
+                alias = f"emb{zlib.crc32(fontbuffer) & 0xFFFFFFFF:08x}"
+            else:
+                alias = self._base14_font_alias(source_fontname, source_flags)
 
-                    if not is_embedded:
+            resolved[i] = (alias, fontfile, fontbuffer)
+
+        return resolved
+
+    def _register_fonts(
+        self,
+        page: fitz.Page,
+        resolved: Dict[int, Tuple[str, Optional[str], Optional[bytes]]],
+        text_metadata: Dict[int, TextMetadata],
+    ) -> Dict[int, Tuple[str, Optional[str], Optional[bytes]]]:
+        """
+        Register resolved file/buffer fonts on the page (post-redaction).
+
+        Kept separate from resolution because ``apply_redactions`` strips
+        font resources with no remaining text references -- registering
+        before the clear pass would silently drop the alias. A registration
+        failure downgrades that entry to its Base-14 alias.
+        """
+        registered = dict(resolved)
+        for i, (alias, fontfile, fontbuffer) in resolved.items():
+            if not fontfile and not fontbuffer:
+                continue
+            try:
+                # Check if font is already registered on this page
+                # (files surface as their basefont, buffers as the alias).
+                is_embedded = any(
+                    entry[3] == alias or entry[4] == alias
+                    for entry in page.get_fonts(full=True)
+                )
+
+                if not is_embedded:
+                    if fontfile:
                         page.insert_font(fontname=alias, fontfile=fontfile)
                         self.logger.debug(
                             f"Embedded font '{fontfile}' with alias '{alias}'"
                         )
                     else:
+                        page.insert_font(fontname=alias, fontbuffer=fontbuffer)
                         self.logger.debug(
-                            f"Font '{alias}' already present on page {page.number}"
+                            f"Registered embedded source font as '{alias}'"
                         )
-                except (OSError, IOError) as e:
-                    self.logger.error(
-                        f"Font embedding failed for '{fontfile}': {e}. "
-                        f"Falling back to default."
+                else:
+                    self.logger.debug(
+                        f"Font '{alias}' already present on page {page.number}"
                     )
-                    fontfile = None
-                    alias = self._base14_font_alias(source_fontname, source_flags)
-            else:
-                alias = self._base14_font_alias(source_fontname, source_flags)
-
-            resolved[i] = (alias, fontfile)
-
-        return resolved
+            except (OSError, IOError, RuntimeError) as e:
+                self.logger.error(
+                    f"Font embedding failed for alias '{alias}': {e}. "
+                    f"Falling back to default."
+                )
+                meta = text_metadata.get(i)
+                fallback_name = meta["fontname"] if meta else "helv"
+                fallback_flags = meta["font_flags"] if meta else 0
+                registered[i] = (
+                    self._base14_font_alias(fallback_name, fallback_flags),
+                    None,
+                    None,
+                )
+        return registered
 
     def _calculate_font_sizes(
         self,
@@ -377,7 +433,7 @@ class OperationApplicator:
         self,
         page: fitz.Page,
         operations: List[Any],
-        resolved_fonts: Dict[int, Tuple[str, Optional[str]]],
+        resolved_fonts: Dict[int, Tuple[str, Optional[str], Optional[bytes]]],
         text_metadata: Dict[int, TextMetadata],
         mode: ApplyMode,
         warnings: List[OpWarning],
@@ -404,8 +460,8 @@ class OperationApplicator:
             final_fontsize = meta["fontsize"]
             text_color = meta["color"]
             font_flags = meta["font_flags"]
-            font_alias, fontfile = resolved_fonts.get(
-                i, (meta["fontname"], op.fontfile)
+            font_alias, fontfile, fontbuffer = resolved_fonts.get(
+                i, (meta["fontname"], op.fontfile, None)
             )
 
             # In preview mode, use slightly gray color if black is selected
@@ -427,6 +483,7 @@ class OperationApplicator:
                     warnings=warnings,
                     wrap_enabled=wrap_enabled,
                     baseline=meta["baseline"],
+                    fontbuffer=fontbuffer,
                 )
 
     def _wrap_line_count(
@@ -490,6 +547,7 @@ class OperationApplicator:
         warnings: Optional[List[OpWarning]] = None,
         wrap_enabled: bool = TEXT_WRAP_ENABLED,
         baseline: Optional[float] = None,
+        fontbuffer: Optional[bytes] = None,
     ) -> None:
         """
         Insert text, preferring word-wrap over font shrinking.
@@ -511,15 +569,20 @@ class OperationApplicator:
                 the insertion box is shifted so the replacement sits on the
                 original baseline (text-fidelity); None keeps the legacy
                 box-top placement.
+            fontbuffer: Embedded font program reused from the source PDF
+                (embedded-font-reuse). Used for measurement; insertion then
+                references the alias that ``_prepare_fonts`` registered on
+                this page via ``insert_font(fontbuffer=)``.
         """
         expanded_rect, final_fontsize, wrapped_lines, autofit_shrunk = (
             self._compute_text_layout(
                 page, rect, text, fontname, initial_fontsize, fontfile,
-                wrap_enabled, baseline,
+                wrap_enabled, baseline, fontbuffer,
             )
         )
 
-        # Try insert_textbox for better layout handling
+        # Try insert_textbox for better layout handling. A buffer-based font
+        # is referenced purely by its page-registered alias (fontfile=None).
         result = page.insert_textbox(
             expanded_rect,
             text,
@@ -582,6 +645,7 @@ class OperationApplicator:
         fontfile: Optional[str],
         wrap_enabled: bool,
         baseline: Optional[float] = None,
+        fontbuffer: Optional[bytes] = None,
     ) -> Tuple[fitz.Rect, float, int, bool]:
         """
         Decide box geometry and font size before the single insert call.
@@ -617,13 +681,14 @@ class OperationApplicator:
         try:
             # PyMuPDF >= 1.26 removed Page.get_text_length(); width is now
             # measured via fitz.Font.text_length(). Build the Font once and
-            # reuse it for every probe. A custom fontfile takes precedence
-            # over the Base-14 alias name.
-            fit_font = (
-                fitz.Font(fontname=fontname, fontfile=fontfile)
-                if fontfile
-                else fitz.Font(fontname=fontname)
-            )
+            # reuse it for every probe. An embedded buffer or custom fontfile
+            # takes precedence over the Base-14 alias name.
+            if fontbuffer:
+                fit_font = fitz.Font(fontbuffer=fontbuffer)
+            elif fontfile:
+                fit_font = fitz.Font(fontname=fontname, fontfile=fontfile)
+            else:
+                fit_font = fitz.Font(fontname=fontname)
             target_width = expanded_rect.width * TEXT_AUTOFIT_WIDTH_RATIO
 
             # Only act when the text does not already fit on one line at its

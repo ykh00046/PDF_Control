@@ -207,6 +207,10 @@ _None currently tracked. Open a new item here if one surfaces._
 
 - ~~Long Text in Narrow Areas~~: Structured `OpWarning` surfaces shrink/overflow into status bar, history badge, and save-time guard (`app/operations_service.py:33-60`, `app/ui.py:780-822`)
 
+### Added (2026-06-13, embedded-font-reuse PDCA)
+
+- **임베디드 폰트 재사용 (충실도 체인 최종 단계)**: text-fidelity의 후속. 원본 폰트가 시스템에 **미설치**여도 PDF에 박힌 폰트 프로그램을 추출해 교체에 재사용. `fonts.extract_embedded_font(page, source_fontname, must_cover)` — span 폰트명↔basefont를 `_font_name_candidates` 교집합으로 매칭, `doc.extract_font`→`fitz.Font(fontbuffer=)`+글리프 커버리지 검증. 서브셋 임베드는 cmap 제거(Identity-H)로 `has_glyph`=0이라 자동 거부(안전 폴백, 실측 확인). applicator 우선순위 `op.fontfile > 시스템 매칭 > 임베디드 재사용 > Base-14`, resolved 튜플 `(alias, fontfile, fontbuffer)`. **핵심 함정**: `apply_redactions`가 미참조 폰트 리소스를 스트립 → 추출은 redaction *전*(`_prepare_fonts`), 등록은 *후*(신설 `_register_fonts` Pass 2.5)로 분리해야 "need font file or buffer" 회피. 임베디드 별칭은 버퍼 crc32 기반(`emb{crc32:08x}`)으로 배치 다중폰트 교차오염 방지. preview=save 단일 경로 보장. 261 tests pass.
+
 ### Resolved (2026-06-11, text-fidelity PDCA)
 
 - ~~교체 텍스트의 Base-14 강등·베이스라인 어긋남·크기 부풀림~~: 교체가 원본의 서체·크기·위치를 따라가도록 충실도 개선. (1) `fonts.resolve_pdf_fontname(name, flags, must_cover)` — 추출된 span 폰트명을 Windows 설치 폰트에 자동 매칭(서브셋 접두어/camelCase/스타일 변형/패밀리 폴백 + 글리프 커버리지 검증), applicator 우선순위 체인 `op.fontfile > 시스템 매칭 > Base-14(추출 메타 기준)`. **배치 교체가 항상 helv였던 버그**(op 기본값 `fontname="helv"`가 별칭 도출에 사용) 동시 해소. (2) `TextMetadata.baseline` 신설 — 삽입 박스를 `baseline − ascender×최종크기`로 평행이동해 원본 베이스라인에 정확 안착(실측 200.0→200.0). (3) `text_metadata`의 rect 기반 크기 하한이 추출값을 덮어쓰던 동작 제거(무텍스트 폴백으로 격하). preview=save는 applicator 단일 경로로 자동 보장. 254 tests pass. 후속 후보: PDF 임베디드 폰트 재사용(`doc.extract_font`).

@@ -120,6 +120,11 @@ def _font_name_candidates(pdf_fontname: str, font_flags: int = 0) -> List[str]:
     return unique
 
 
+def _font_covers(font: fitz.Font, text: str) -> bool:
+    """True when the constructed font has a glyph for every non-space char."""
+    return all(font.has_glyph(ord(ch)) for ch in text if not ch.isspace())
+
+
 def _font_file_covers(fontfile: str, text: str) -> bool:
     """True when the font file has a glyph for every non-space char of text."""
     if not text:
@@ -132,7 +137,71 @@ def _font_file_covers(fontfile: str, text: str) -> bool:
         # "cannot vouch for coverage" -> reject the candidate.
         logger.debug(f"Font coverage probe failed for {fontfile}: {exc}")
         return False
-    return all(font.has_glyph(ord(ch)) for ch in text if not ch.isspace())
+    return bool(_font_covers(font, text))
+
+
+def extract_embedded_font(
+    page: fitz.Page, source_fontname: str, must_cover: str = ""
+) -> Optional[bytes]:
+    """Extract the embedded font program matching ``source_fontname``.
+
+    Matching: the extracted span font name and each page-font's basefont are
+    both normalized through :func:`_font_name_candidates` and compared by
+    intersection (measured 2026-06-11: span "ArialMT" vs basefont
+    "Arial Regular" meet at the family candidate "arial"). When several
+    entries match, the one sharing the MOST SPECIFIC source candidate wins.
+
+    Validation: non-empty buffer + ``fitz.Font(fontbuffer=)`` construction +
+    full glyph coverage of ``must_cover``. Subset-embedded fonts have their
+    cmap stripped (Identity-H), so ``has_glyph`` reports 0 for everything and
+    they are naturally rejected -- no false accepts (measured 2026-06-11).
+
+    Returns the font program bytes, or None when nothing usable matches.
+    """
+    src_candidates = _font_name_candidates(source_fontname)
+    if not src_candidates:
+        return None
+
+    best_specificity: Optional[int] = None
+    best_buffer: Optional[bytes] = None
+    doc = page.parent
+
+    for entry in page.get_fonts(full=True):
+        # entry: (xref, ext, type, basefont, name, encoding, ...)
+        base_candidates = set(_font_name_candidates(str(entry[3])))
+        shared = [
+            i for i, c in enumerate(src_candidates) if c in base_candidates
+        ]
+        if not shared:
+            continue
+        specificity = shared[0]
+        if best_specificity is not None and specificity >= best_specificity:
+            continue
+
+        extracted = doc.extract_font(entry[0])
+        raw = extracted[3]
+        if not raw:
+            continue  # Base-14 / Type3 etc. carry no extractable program
+        buffer = bytes(raw)
+        try:
+            font = fitz.Font(fontbuffer=buffer)
+        except Exception as exc:
+            # FzError* hierarchy -- unusable program, skip this entry.
+            logger.debug(
+                f"Embedded font xref={entry[0]} unusable: {exc}"
+            )
+            continue
+        if not _font_covers(font, must_cover):
+            continue
+
+        logger.debug(
+            f"Reusing embedded font xref={entry[0]} basefont='{entry[3]}' "
+            f"for '{source_fontname}'"
+        )
+        best_specificity = specificity
+        best_buffer = buffer
+
+    return best_buffer
 
 
 def resolve_pdf_fontname(

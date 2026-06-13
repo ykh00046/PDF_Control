@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Improved: text replacement now keeps the original typeface even when that font is NOT installed on your system — the font embedded in the PDF itself is reused for the replacement. (Subset-embedded fonts, which only contain the glyphs the document already used, safely fall back to a standard font.)
 - Improved: text replacement now matches the original much more closely — the replacement is rendered in the document's own typeface when that font is installed on the system (previously everything fell back to Helvetica/Times/Courier approximations, and batch replace was always Helvetica), sits exactly on the original text's baseline, and keeps the original font size even when the selection box is drawn larger than the text.
 - Changed: unsaved edits (text replace/delete, crop, section removal) now survive page reordering — moving, duplicating, merging, or drag-reordering pages remaps the pending edit history onto the pages it belonged to instead of silently discarding it. The redo stack is still cleared (page indices change), matching the existing delete-page behavior.
 - Changed: removed the staged progress dialog from "Remove Section" — adding the operation completes instantly (the heavy rendering already runs asynchronously in the preview worker), so the 25/50/75% progress steps did not correspond to any real work.
