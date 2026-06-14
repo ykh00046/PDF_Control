@@ -8,7 +8,14 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
-from PySide6.QtWidgets import QFileDialog, QInputDialog, QLineEdit, QMessageBox
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QApplication,
+    QFileDialog,
+    QInputDialog,
+    QLineEdit,
+    QMessageBox,
+)
 
 from app.config import save_config, set_config_value
 from app.encryption import IncorrectPassword, PasswordRequired
@@ -147,6 +154,15 @@ class FileHandlerMixin:
         )
 
         if output_path:
+            # Saving is synchronous and can take up to a few seconds on large
+            # documents (measured: ~0.9s for 100p + RemoveSection). Show a wait
+            # cursor + status so the blocking window doesn't read as "not
+            # responding"; processEvents paints them once before the blocking
+            # save. The cursor is always restored in finally (a leaked
+            # WaitCursor would persist for the whole session).
+            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            self.statusBar().showMessage(tr("status.saving"))
+            QApplication.processEvents()
             try:
                 self.controller.save_document(output_path, encryption=encryption)
                 saved_path = (
@@ -178,6 +194,8 @@ class FileHandlerMixin:
                     self, tr("dialog.error"), tr("error.cannot_save", e)
                 )
                 return False
+            finally:
+                QApplication.restoreOverrideCursor()
 
         self.statusBar().showMessage(tr("status.cancelled_save"))
         return False

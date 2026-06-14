@@ -207,6 +207,10 @@ _None currently tracked. Open a new item here if one surfaces._
 
 - ~~Long Text in Narrow Areas~~: Structured `OpWarning` surfaces shrink/overflow into status bar, history badge, and save-time guard (`app/operations_service.py:33-60`, `app/ui.py:780-822`)
 
+### Added (2026-06-14, save-busy-indicator PDCA)
+
+- **저장 중 busy 표시**: 동기 저장의 "응답 없음" 인상 제거 — `_commit_save`가 저장 직전 `setOverrideCursor(WaitCursor)` + 상태바 `status.saving` + `processEvents()`(페인트 후 블로킹), `finally: restoreOverrideCursor()`로 영구 커서 누수 방지. async-save 착수 전 측정(대부분 저장 <1s, tobytes 직렬화는 비동기화해도 메인 잔존, 풀 워커는 최고 위험)에 근거해 **풀 async-save 대신 경량 안**을 사용자가 선택. 가짜 진행률(%)은 배제(r7 교훈). 저장 UI 경로 첫 테스트(커서 복원 성공/실패/취소). 풀 async-save는 `source_bytes` 발판 위에서 보류. 271 tests pass.
+
 ### Resolved (2026-06-14, save-integrity PDCA)
 
 - ~~페이지 관리 변경이 저장 시 손실(데이터 손실)~~: 삭제/회전/이동/복제/병합/재배열이 저장된 파일에 반영 안 되던 버그. `save_document`가 `save_document_copy(self.file_path, ...)`로 **원본 파일을 재오픈**해 history op만 적용했는데, 페이지 관리는 `self.doc` 직접 수정이라 손실됐다(단일 저장 경로, r7 히스토리 보존도 무력화). 수정: `save_document_copy(source_bytes=)` 신설 → 세션이 `self.doc.tobytes()`(페이지 관리 반영 평문 스냅샷, 암호화 문서도 인증 시 평문) 전달. history redaction은 throwaway 버퍼에만 적용돼 `self.doc` 무손상. 출력 암호화/복호화/재바인드 불변, 레거시 source_path 100% 하위 호환. `source_bytes`는 차기 async-save의 워커 입력 구조와 동일. async-save 실측 중 발견. 268 tests pass(저장 *파일*의 페이지 수/순서/회전 직접 검증 — r7 보강).

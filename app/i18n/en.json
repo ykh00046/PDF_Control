@@ -48,6 +48,7 @@
   "dialog.save_changes.message": "The document has unsaved changes. Do you want to save them before quitting?",
   "status.ready": "Ready",
   "status.opened": "Opened: {0}",
+  "status.saving": "Saving...",
   "status.saved": "Document saved to: {0}",
   "status.saved_encrypted": "Encrypted document saved to: {0}",
   "status.decrypted": "Protection removed — saved to: {0}",

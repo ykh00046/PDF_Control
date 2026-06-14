@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Improved: saving now shows a wait cursor and a "Saving..." status so a large document's save no longer looks like the app has frozen.
 - Fixed (data loss): page changes — deleting, rotating, moving, duplicating, merging, or reordering pages — were silently discarded when you saved (the save re-read the original file and applied only text edits). Saving now writes the document exactly as you see it, with both page changes and text edits. Encrypted save/decrypt is unaffected.
 - Improved: text replacement now keeps the original typeface even when that font is NOT installed on your system — the font embedded in the PDF itself is reused for the replacement. (Subset-embedded fonts, which only contain the glyphs the document already used, safely fall back to a standard font.)
 - Improved: text replacement now matches the original much more closely — the replacement is rendered in the document's own typeface when that font is installed on the system (previously everything fell back to Helvetica/Times/Courier approximations, and batch replace was always Helvetica), sits exactly on the original text's baseline, and keeps the original font size even when the selection box is drawn larger than the text.

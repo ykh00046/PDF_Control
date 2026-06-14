@@ -48,6 +48,7 @@
   "dialog.save_changes.message": "문서에 저장되지 않은 변경 사항이 있습니다. 종료하기 전에 저장하시겠습니까?",
   "status.ready": "준비됨",
   "status.opened": "열림: {0}",
+  "status.saving": "저장 중...",
   "status.saved": "문서가 다음 위치에 저장되었습니다: {0}",
   "status.saved_encrypted": "암호화된 문서가 다음 위치에 저장되었습니다: {0}",
   "status.decrypted": "보호 해제됨 — 저장: {0}",
