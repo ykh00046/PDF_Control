@@ -1,5 +1,6 @@
 import fitz
 
+
 def generate_sample_pdf(filename="sample.pdf"):
     doc = fitz.open()  # new PDF
     page = doc.new_page() # new page

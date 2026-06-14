@@ -1,4 +1,5 @@
 import inspect
+
 import fitz
 
 try:

@@ -4,8 +4,16 @@ Returns an :class:`~app.encryption.EncryptionSettings`; the actual save-time
 encryption is handled by the save path (see ``app.encryption``).
 """
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QGridLayout, QGroupBox,
-    QCheckBox, QLabel, QLineEdit, QPushButton, QMessageBox,
+    QCheckBox,
+    QDialog,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
 )
 
 from app.config import (

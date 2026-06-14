@@ -3,10 +3,10 @@ from unittest.mock import patch
 
 import fitz
 import pytest
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QFileDialog
 
 from app.ui import MainWindow
+
 
 @pytest.fixture
 def sample_pdf(tmp_path):

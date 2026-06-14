@@ -18,7 +18,7 @@ def is_frozen() -> bool:
 def get_base_path() -> Path:
     """
     Get base path for the application.
-    
+
     Returns:
         Path to application base directory (frozen or development)
     """
@@ -33,15 +33,15 @@ def get_base_path() -> Path:
 def get_resource_path(relative_path: str) -> Path:
     """
     Get absolute path to a resource file.
-    
+
     Works in both development and PyInstaller frozen environments.
-    
+
     Args:
         relative_path: Relative path from project root (e.g., 'app/i18n/en.json')
-        
+
     Returns:
         Absolute path to the resource
-        
+
     Example:
         >>> get_resource_path('app/i18n/en.json')
         Path('/path/to/app/i18n/en.json')
@@ -53,10 +53,10 @@ def get_resource_path(relative_path: str) -> Path:
 def get_i18n_path(filename: str) -> Path:
     """
     Get path to i18n translation file.
-    
+
     Args:
         filename: Translation filename (e.g., 'en.json')
-        
+
     Returns:
         Absolute path to translation file
     """
@@ -136,7 +136,7 @@ def get_log_path() -> Path:
 def get_temp_dir() -> Path:
     """
     Get temporary directory for the application.
-    
+
     Returns:
         Path to temp directory
     """

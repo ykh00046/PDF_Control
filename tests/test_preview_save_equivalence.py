@@ -12,8 +12,8 @@ text, PREVIEW keeps it under a white fill). Visual parity is the contract.
 import fitz
 import pytest
 
-from app.operations_service import ApplyMode, OperationApplicator
 from app.model import RedactDelete, RedactReplace
+from app.operations_service import ApplyMode, OperationApplicator
 
 
 @pytest.fixture

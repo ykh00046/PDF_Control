@@ -5,7 +5,6 @@ import app.fonts as fonts
 from app.config import FONT_FLAG_BOLD, FONT_FLAG_ITALIC
 from app.fonts import _font_name_candidates, resolve_pdf_fontname
 
-
 # ── candidate generation (pure) ──────────────────────────────────────
 
 def test_subset_prefix_is_stripped():

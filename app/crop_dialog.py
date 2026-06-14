@@ -1,11 +1,23 @@
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QGroupBox,
-                               QCheckBox, QLabel, QPushButton, QGraphicsView,
-                               QGraphicsScene, QGraphicsPixmapItem, QGraphicsRectItem)
-from PySide6.QtCore import Qt, QRectF, Signal
-from PySide6.QtGui import QPixmap, QImage, QPen, QColor, QBrush
 import fitz
+from PySide6.QtCore import QRectF, Qt, Signal
+from PySide6.QtGui import QBrush, QColor, QImage, QPen, QPixmap
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QDialog,
+    QGraphicsPixmapItem,
+    QGraphicsRectItem,
+    QGraphicsScene,
+    QGraphicsView,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+)
+
 from app.i18n import tr
 from app.logger import get_logger
+
 
 class CropPreviewDialog(QDialog):
     """Dialog to preview and configure page cropping."""

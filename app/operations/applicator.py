@@ -8,8 +8,9 @@ Design: Stateless service pattern for thread-safe operation application.
 
 import os
 import zlib
+from typing import Any, Dict, List, Optional, Tuple
+
 import fitz
-from typing import Any, List, Dict, Tuple, Optional
 
 from app.config import (
     FONT_FLAG_BOLD,

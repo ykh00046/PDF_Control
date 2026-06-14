@@ -1,8 +1,8 @@
-import os
-import json
 import ast
-from datetime import datetime
+import json
 import logging
+import os
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -11,15 +11,15 @@ import pytest
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import QGraphicsPixmapItem
 
-import app.logger as app_logger
 import app.i18n as i18n_module
+import app.logger as app_logger
 from app.controller import EditorController
 from app.i18n import load_translations
 from app.model import DocumentSession, RedactReplace, RemoveSectionAsImage
 from app.operations_service import ApplyMode, OperationApplicator
 from app.pdf_engine import render_page_preview, save_document_copy
-from app.ui import MainWindow
 from app.render_worker import run_render_job
+from app.ui import MainWindow
 from app.viewer import PDFViewer
 
 

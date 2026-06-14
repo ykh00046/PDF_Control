@@ -1,8 +1,19 @@
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-                               QPushButton, QComboBox, QMessageBox, QDoubleSpinBox, QGroupBox)
-from PySide6.QtCore import Qt, Signal
-from app.i18n import tr
 import fitz
+from PySide6.QtCore import Signal
+from PySide6.QtWidgets import (
+    QComboBox,
+    QDialog,
+    QDoubleSpinBox,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+)
+
+from app.i18n import tr
+
 
 class RemoveSectionDialog(QDialog):
     """영역 제거 (이미지 변환) 다이얼로그 - 정밀 좌표 입력 기능 포함"""
@@ -27,11 +38,18 @@ class RemoveSectionDialog(QDialog):
         # 1. 경고 메시지
         warning_label = QLabel(f"<h3>⚠️ {tr('remove.warning.title')}</h3><p>{tr('remove.warning.message')}</p>")
         warning_label.setWordWrap(True)
-        warning_label.setStyleSheet("background-color: #fff3cd; color: #664d03; padding: 10px; border: 1px solid #ffc107; border-radius: 4px;")
+        warning_label.setStyleSheet(
+            "background-color: #fff3cd; color: #664d03; padding: 10px; "
+            "border: 1px solid #ffc107; border-radius: 4px;"
+        )
         layout.addWidget(warning_label)
 
         # 2. 정밀 좌표 입력 그룹
-        coord_group = QGroupBox(tr("remove.precision.title") if "remove.precision.title" in tr("remove.precision.title") else "Precision Adjustment")
+        coord_group = QGroupBox(
+            tr("remove.precision.title")
+            if "remove.precision.title" in tr("remove.precision.title")
+            else "Precision Adjustment"
+        )
         coord_layout = QVBoxLayout(coord_group)
 
         # Y0 (상단)
@@ -43,11 +61,11 @@ class RemoveSectionDialog(QDialog):
         self.y0_spin.setSuffix(" pt")
         self.y0_spin.setDecimals(1)
         self.y0_spin.valueChanged.connect(self._on_coords_changed)
-        
+
         y0_snap_btn = QPushButton(tr("remove.snap.top") if "remove.snap.top" in tr("remove.snap.top") else "To Top")
         y0_snap_btn.setFixedWidth(80)
         y0_snap_btn.clicked.connect(lambda: self.y0_spin.setValue(0))
-        
+
         y0_layout.addWidget(y0_label)
         y0_layout.addWidget(self.y0_spin)
         y0_layout.addWidget(y0_snap_btn)
@@ -62,11 +80,15 @@ class RemoveSectionDialog(QDialog):
         self.y1_spin.setSuffix(" pt")
         self.y1_spin.setDecimals(1)
         self.y1_spin.valueChanged.connect(self._on_coords_changed)
-        
-        y1_snap_btn = QPushButton(tr("remove.snap.bottom") if "remove.snap.bottom" in tr("remove.snap.bottom") else "To Bottom")
+
+        y1_snap_btn = QPushButton(
+            tr("remove.snap.bottom")
+            if "remove.snap.bottom" in tr("remove.snap.bottom")
+            else "To Bottom"
+        )
         y1_snap_btn.setFixedWidth(80)
         y1_snap_btn.clicked.connect(lambda: self.y1_spin.setValue(self.page_rect.height))
-        
+
         y1_layout.addWidget(y1_label)
         y1_layout.addWidget(self.y1_spin)
         y1_layout.addWidget(y1_snap_btn)
@@ -77,7 +99,10 @@ class RemoveSectionDialog(QDialog):
         # 3. 결과 정보 (실시간 갱신됨)
         self.info_label = QLabel()
         self.info_label.setWordWrap(True)
-        self.info_label.setStyleSheet("padding: 10px; border: 1px solid #ccc; border-radius: 4px; background-color: #f8f9fa; color: #1a1a1a;")
+        self.info_label.setStyleSheet(
+            "padding: 10px; border: 1px solid #ccc; border-radius: 4px; "
+            "background-color: #f8f9fa; color: #1a1a1a;"
+        )
         layout.addWidget(self.info_label)
         self._update_info_label()
 
@@ -115,7 +140,7 @@ class RemoveSectionDialog(QDialog):
         """좌표 입력 변경 시 내부 rect와 정보 레이블 업데이트"""
         y0 = self.y0_spin.value()
         y1 = self.y1_spin.value()
-        
+
         # 유효성 검사 (y1은 y0보다 커야 함)
         if y1 <= y0:
             self.y1_spin.setStyleSheet("border: 1px solid red;")
@@ -123,7 +148,7 @@ class RemoveSectionDialog(QDialog):
         else:
             self.y1_spin.setStyleSheet("")
             self.y0_spin.setStyleSheet("")
-            
+
         self.selected_rect.y0 = y0
         self.selected_rect.y1 = y1
         self._update_info_label()
@@ -145,7 +170,7 @@ class RemoveSectionDialog(QDialog):
         if self.selected_rect.y1 <= self.selected_rect.y0:
             QMessageBox.warning(self, tr("dialog.error"), "Invalid range: Y1 must be greater than Y0")
             return
-            
+
         dpi = int(self.dpi_combo.currentText())
         format_type = self.format_combo.currentData()
 

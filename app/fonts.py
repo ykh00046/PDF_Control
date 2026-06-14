@@ -37,7 +37,7 @@ def _populate_font_cache() -> None:
         return
 
     _font_cache = {}
-    
+
     if sys.platform != "win32" or winreg is None:
         logger.warning("Font registry lookup is only supported on Windows. Font cache will be empty.")
         return
@@ -54,7 +54,7 @@ def _populate_font_cache() -> None:
                     # Key is like "Arial (TrueType)", value is "arial.ttf"
                     font_name = value_name.split(" (")[0].strip()
                     font_path = os.path.join(fonts_dir, value_data)
-                    
+
                     # Store lowercased name for case-insensitive matching
                     _font_cache[font_name.lower()] = font_path
                     i += 1
@@ -234,14 +234,13 @@ def get_default_korean_font_path() -> Optional[str]:
 
 if __name__ == "__main__":
     # Example usage
-    from pprint import pprint
     from app.logger import setup_logger
     setup_logger()
-    
+
     # Test getting a specific font
     arial_path = get_font_path_by_name("Arial")
     print(f"\nArial font path: {arial_path}")
-    
+
     malgun_path = get_font_path_by_name("Malgun Gothic")
     print(f"Malgun Gothic font path: {malgun_path}")
 

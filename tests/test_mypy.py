@@ -1,8 +1,9 @@
 """Static type-checking enforcement for the operations pipeline.
 
 Runs mypy --strict on the ``app.operations`` package via the config in
-mypy.ini. A type-contract mismatch there silently broke 3 smoke tests on
-2026-04-14; this test blocks the same class of regression at CI time.
+``pyproject.toml`` (``[tool.mypy]``; was ``mypy.ini`` until the pyproject-ruff
+cycle, 2026-06-15). A type-contract mismatch there silently broke 3 smoke
+tests on 2026-04-14; this test blocks the same class of regression at CI time.
 
 Scope was widened from a single file to the whole package on 2026-05-27
 as part of the operations-restructure PDCA cycle, again on 2026-06-02
@@ -20,7 +21,7 @@ import pytest
 ROOT = Path(__file__).parent.parent
 
 # Leaf modules promoted to the strict gate in the r2-quality-fixes cycle.
-# Their per-module strict settings live in mypy.ini.
+# Their per-module strict settings live in pyproject.toml [[tool.mypy.overrides]].
 STRICT_LEAF_MODULES = [
     "app/config.py",
     "app/logger.py",

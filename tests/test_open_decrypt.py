@@ -11,7 +11,6 @@ from app.encryption import (
 )
 from app.pdf_engine import open_document, save_document_copy
 
-
 # ── open_document: password handling ────────────────────────────────
 
 def test_open_encrypted_without_password_raises(encrypted_pdf):

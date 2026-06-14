@@ -1,6 +1,7 @@
 """Tests for page management operations (rotate, delete, reorder, insert)."""
-import pytest
 import fitz
+import pytest
+
 from app.model import DocumentSession, RedactDelete, RedactReplace
 
 

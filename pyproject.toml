@@ -1,0 +1,64 @@
+[project]
+name = "pdf-control"
+version = "0.1.0"
+requires-python = ">=3.13"
+# Runtime/test dependencies stay in requirements.txt (CI uses
+# `pip install -r requirements.txt`); see the pyproject-ruff plan's "Won't".
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+# Scratch scripts bootstrap sys.path before importing app (intentional E402).
+"scripts/*" = ["E402"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = ["logs", ".appdata", ".pytest_cache"]
+
+[tool.mypy]
+python_version = "3.13"
+ignore_missing_imports = true
+follow_imports = "silent"
+warn_unused_ignores = true
+
+# operations package: strict, with the two relaxations carried over from the
+# former mypy.ini (a type-contract mismatch here silently broke 3 smoke tests
+# on 2026-04-14; the strict gate blocks that class of regression).
+[[tool.mypy.overrides]]
+module = ["app.operations.*"]
+strict = true
+disallow_any_decorated = false
+warn_return_any = false
+
+# Backward-compat shim -- re-export only; strict is enforced on the real
+# modules in app.operations.
+[[tool.mypy.overrides]]
+module = ["app.operations_service"]
+ignore_errors = true
+
+# Clean leaf modules + the model facade: plain strict (0 errors).
+[[tool.mypy.overrides]]
+module = [
+    "app.config",
+    "app.logger",
+    "app.path_helper",
+    "app.text_utils",
+    "app.text_metadata",
+    "app.fonts",
+    "app.page_split",
+    "app.encryption",
+    "app.model",
+]
+strict = true
+
+# Legacy-core (r6-quality): strict, but fitz-facing Any returns are allowed
+# because PyMuPDF ships no stubs (ignore_missing_imports).
+[[tool.mypy.overrides]]
+module = ["app.document_model", "app.pdf_engine", "app.document_session"]
+strict = true
+warn_return_any = false

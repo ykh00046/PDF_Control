@@ -9,9 +9,9 @@ ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from check_claude_md_drift import (  # noqa: E402
-    slugify,
     detect_drift,
     parse_current_issues,
+    slugify,
 )
 
 

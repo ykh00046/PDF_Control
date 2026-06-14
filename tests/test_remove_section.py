@@ -1,7 +1,9 @@
-import pytest
+
 import fitz
-from pathlib import Path
+import pytest
+
 from app.model import DocumentSession, RemoveSectionAsImage
+
 
 @pytest.fixture
 def sample_pdf_with_sections(tmp_path):
@@ -132,7 +134,6 @@ def test_remove_bottom_section(sample_pdf_with_sections, tmp_path):
         result_page = result_doc[0]
 
         # 페이지 높이 확인
-        removed_height = original_height - 550
         expected_height = 550
         assert abs(result_page.rect.height - expected_height) < 5
 

@@ -11,12 +11,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 from app.document_session import DocumentSession
 from app.render_worker import run_render_job
 from app.viewer import PDFViewer
-
 
 # ── DocumentSession.render_password accessor ────────────────────────
 

@@ -1,18 +1,20 @@
-from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsRectItem
-from PySide6.QtGui import QPixmap, QImage, QPainter, QBrush, QColor, QPen
-from PySide6.QtCore import Qt, QPointF, Signal, QRectF, QTimer
-
-import fitz # PyMuPDF
-from typing import Optional, Dict, List
-from pathlib import Path
+import hashlib
+import json
 import subprocess
 import sys
 import uuid
-import hashlib
-import json
-from app.model import DocumentSession
+from pathlib import Path
+from typing import Dict, List, Optional
+
+import fitz  # PyMuPDF
+from PySide6.QtCore import QPointF, QRectF, Qt, QTimer, Signal
+from PySide6.QtGui import QBrush, QColor, QImage, QPainter, QPen, QPixmap
+from PySide6.QtWidgets import QGraphicsPixmapItem, QGraphicsRectItem, QGraphicsScene, QGraphicsView
+
 from app.logger import get_logger, log_render_performance
+from app.model import DocumentSession
 from app.path_helper import get_base_path, get_temp_dir, is_frozen
+
 
 class PDFViewer(QGraphicsView):
     selection_made = Signal(fitz.Rect)
@@ -26,7 +28,7 @@ class PDFViewer(QGraphicsView):
         self.setScene(self.scene)
         self.setRenderHint(QPainter.Antialiasing)
         self.setDragMode(QGraphicsView.ScrollHandDrag)
-        
+
         self.session: Optional[DocumentSession] = None
         self.current_page_index = -1
         self.current_pixmap_item = None
@@ -35,7 +37,7 @@ class PDFViewer(QGraphicsView):
         self.start_point: Optional[QPointF] = None
         self.end_point: Optional[QPointF] = None
         self.selection_rect_item: Optional[QGraphicsRectItem] = None
-        
+
         # Process-based rendering & cache
         self.image_cache = {} # Key: hash string, Value: QImage
         self.cache_size = 20 # Max number of cached images
@@ -289,7 +291,7 @@ class PDFViewer(QGraphicsView):
 
         # 1. Prepare operations data
         ops_data = self._current_ops_data()
-        
+
         # 2. Check Cache
         cache_key = self._compute_cache_key(self.current_page_index, self.zoom_level, ops_data)
         if cache_key in self.image_cache:
@@ -309,7 +311,7 @@ class PDFViewer(QGraphicsView):
 
     def _on_render_finished(self, result):
         page_index, img, duration, zoom, request_key = result
-        
+
         if not self.session:
             self.render_finished.emit()
             return
@@ -335,9 +337,9 @@ class PDFViewer(QGraphicsView):
         if len(self.image_cache) >= self.cache_size:
             # Remove arbitrary item (first key) - simple FIFO/random actually
             self.image_cache.pop(next(iter(self.image_cache)))
-            
+
         self.image_cache[request_key] = img
-             
+
         self._update_scene(img)
         log_render_performance(page_index, duration, zoom)
         self.render_finished.emit()
@@ -365,17 +367,17 @@ class PDFViewer(QGraphicsView):
         self.current_pixmap_item = QGraphicsPixmapItem(QPixmap.fromImage(img))
         self.scene.addItem(self.current_pixmap_item)
         self.scene.setSceneRect(self.current_pixmap_item.boundingRect())
-        
+
         # Only fitInView if scene was empty or size changed significantly?
         # Or just rely on user scroll?
-        # Maintain legacy behavior: only on first load? 
+        # Maintain legacy behavior: only on first load?
         # For now, call fitInView only if zoom is 1.0 (initial) or fit mode?
         # Actually, request_render is called by zoom methods too.
         # We shouldn't force fitInView on every render if user zoomed.
         # But original code did `fitInView` in render_current_page.
         # Let's keep it simple: update scene. User keeps scroll/zoom.
         # If we want "fit to width", we change zoom level, which triggers render.
-        
+
         self.viewport().update()
         self.update()
 
@@ -400,9 +402,11 @@ class PDFViewer(QGraphicsView):
         self.set_zoom(self.zoom_level / 1.2)
 
     def fit_to_width(self):
-        if not self.session or self.current_page_index < 0: return
+        if not self.session or self.current_page_index < 0:
+            return
         view_width = self.viewport().width()
-        if view_width <= 0: return
+        if view_width <= 0:
+            return
 
         if self.current_pixmap_item is not None:
             rendered_width = self.current_pixmap_item.pixmap().width()
@@ -495,11 +499,15 @@ class PDFViewer(QGraphicsView):
 
     def _qrectf_to_fitz_rect(self, qrectf):
         try:
-            if not self.current_pixmap_item or not self.session: return fitz.Rect(0,0,0,0)
+            if not self.current_pixmap_item or not self.session:
+                return fitz.Rect(0, 0, 0, 0)
             top_left_item = self.current_pixmap_item.mapFromScene(qrectf.topLeft())
             bottom_right_item = self.current_pixmap_item.mapFromScene(qrectf.bottomRight())
             scale = self.zoom_level * 150 / 72
-            pdf_rect = fitz.Rect(top_left_item.x()/scale, top_left_item.y()/scale, bottom_right_item.x()/scale, bottom_right_item.y()/scale)
+            pdf_rect = fitz.Rect(
+                top_left_item.x() / scale, top_left_item.y() / scale,
+                bottom_right_item.x() / scale, bottom_right_item.y() / scale,
+            )
             return pdf_rect & self.session.doc[self.current_page_index].rect
         except Exception as e:
             get_logger().debug(f"Error converting QRectF to fitz.Rect: {e}")

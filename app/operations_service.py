@@ -10,8 +10,8 @@ no external callers rely on the legacy import path.
 from app.operations import (  # noqa: F401
     ApplyMode,
     ApplyResult,
-    OpWarning,
     OperationApplicator,
+    OpWarning,
     TextMetadata,
     WarningReport,
 )

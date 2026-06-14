@@ -5,7 +5,7 @@ Includes Unicode sanitization (inspired by opendataloader-pdf) and
 page range parsing for batch operations.
 """
 import re
-from typing import List, Optional, Set, Tuple
+from typing import List, Set
 
 # Matches lone surrogates (U+D800..U+DFFF) and null characters.
 # These can appear in PDFs with malformed font encodings and cause

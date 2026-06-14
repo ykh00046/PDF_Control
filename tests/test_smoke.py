@@ -1,9 +1,10 @@
-import pytest
+
 import fitz
-import os
-from pathlib import Path
-from app.model import DocumentSession, RedactDelete, RedactReplace
+import pytest
+
 from app.fonts import get_font_path_by_name
+from app.model import DocumentSession, RedactDelete, RedactReplace
+
 
 @pytest.fixture
 def sample_pdf(tmp_path):
@@ -102,7 +103,10 @@ def test_pdf_redaction_and_replacement_with_custom_font(sample_pdf, tmp_path):
                 embedded_font_found = True
                 break
 
-        assert embedded_font_found, f"Custom font '{font_name}' was not embedded correctly. Fonts found: {[f[3] for f in page_fonts]}"
+        assert embedded_font_found, (
+            f"Custom font '{font_name}' was not embedded correctly. "
+            f"Fonts found: {[f[3] for f in page_fonts]}"
+        )
         print(f"Test successful: {output_path} verified with custom font embedding.")
 
     finally:
@@ -130,21 +134,21 @@ def test_undo_redo_roundtrip(sample_pdf, tmp_path):
         # Verify operation added
         assert len(session.history) == 1
         assert len(session.redo_stack) == 0
-        assert session.modified == True
+        assert session.modified is True
 
         # Undo
         undone_op = session.undo()
         assert undone_op is not None
         assert len(session.history) == 0
         assert len(session.redo_stack) == 1
-        assert session.modified == False
+        assert session.modified is False
 
         # Redo
         redone_op = session.redo()
         assert redone_op is not None
         assert len(session.history) == 1
         assert len(session.redo_stack) == 0
-        assert session.modified == True
+        assert session.modified is True
 
         print("Undo/Redo roundtrip test passed!")
 
@@ -172,7 +176,7 @@ def test_save_clears_history(sample_pdf, tmp_path):
 
         # Verify operations in history
         assert len(session.history) == 2
-        assert session.modified == True
+        assert session.modified is True
 
         # Save document
         session.save_document(str(output_path))
@@ -180,7 +184,7 @@ def test_save_clears_history(sample_pdf, tmp_path):
         # Verify history cleared after save
         assert len(session.history) == 0
         assert len(session.redo_stack) == 0
-        assert session.modified == False
+        assert session.modified is False
 
         print("Save clears history test passed!")
 

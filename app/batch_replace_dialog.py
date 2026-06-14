@@ -1,11 +1,27 @@
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QCheckBox, QAbstractItemView, QMessageBox, QSpinBox
-from PySide6.QtCore import Qt, Signal
-from app.logger import get_logger
-from app.i18n import tr
-from app.text_utils import parse_page_range, sanitize_unicode
-import fitz
 import re
-from typing import List, Tuple, Dict, Any, Optional
+from typing import Any, Dict, List
+
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QCheckBox,
+    QDialog,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QSpinBox,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+)
+
+from app.i18n import tr
+from app.logger import get_logger
+from app.text_utils import parse_page_range, sanitize_unicode
+
 
 class BatchReplaceDialog(QDialog):
     # Signal to emit when replacements are confirmed
@@ -21,7 +37,7 @@ class BatchReplaceDialog(QDialog):
         self.logger = get_logger()
 
         self._setup_ui()
-    
+
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
 
@@ -54,14 +70,14 @@ class BatchReplaceDialog(QDialog):
         page_range_layout.addWidget(self.page_range_input)
         page_range_layout.addStretch()
         main_layout.addLayout(page_range_layout)
-        
+
         # --- Font Size Options ---
         font_layout = QHBoxLayout()
         self.use_fixed_font_checkbox = QCheckBox(tr("batch.use_fixed_font"))
         self.use_fixed_font_checkbox.setToolTip(tr("batch.use_fixed_font.tooltip"))
         self.use_fixed_font_checkbox.toggled.connect(self._on_fixed_font_toggled)
         font_layout.addWidget(self.use_fixed_font_checkbox)
-        
+
         font_layout.addWidget(QLabel(tr("batch.font_size")))
         self.font_size_spinbox = QSpinBox()
         self.font_size_spinbox.setRange(8, 72)
@@ -88,7 +104,10 @@ class BatchReplaceDialog(QDialog):
         # --- Matches Table ---
         self.matches_table = QTableWidget()
         self.matches_table.setColumnCount(4)
-        self.matches_table.setHorizontalHeaderLabels([tr("batch.header.page"), tr("batch.header.context"), tr("batch.header.found_text"), tr("batch.header.replace")])
+        self.matches_table.setHorizontalHeaderLabels([
+            tr("batch.header.page"), tr("batch.header.context"),
+            tr("batch.header.found_text"), tr("batch.header.replace"),
+        ])
         self.matches_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.matches_table.setSelectionBehavior(QAbstractItemView.SelectRows) # Select whole rows
         main_layout.addWidget(self.matches_table)
@@ -105,11 +124,11 @@ class BatchReplaceDialog(QDialog):
         button_layout.addWidget(self.cancel_button)
 
         main_layout.addLayout(button_layout)
-    
+
     def _on_fixed_font_toggled(self, checked):
         """Enable/disable font size spinbox based on checkbox state."""
         self.font_size_spinbox.setEnabled(checked)
-    
+
     def _get_target_pages(self):
         """Parse page range input and return set of 0-based page indices."""
         page_range_text = self.page_range_input.text().strip()
@@ -198,10 +217,6 @@ class BatchReplaceDialog(QDialog):
             if target_pages is not None and page_idx not in target_pages:
                 continue
             page = self.document_session.doc[page_idx]
-            page_model = self.document_session.pages[page_idx]
-
-            # Get all words on the page
-            words = page_model.get_words(page)
 
             # Get page text for regex matching (sanitize invalid Unicode)
             page_text = sanitize_unicode(page.get_text())
@@ -209,8 +224,6 @@ class BatchReplaceDialog(QDialog):
             # Find all matches in the page text
             for match in regex.finditer(page_text):
                 matched_text = match.group(0)
-                start_pos = match.start()
-                end_pos = match.end()
 
                 # Find the corresponding rectangle(s) for this match
                 # This is approximate: we search for the matched text
@@ -239,7 +252,7 @@ class BatchReplaceDialog(QDialog):
             checkbox_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
             checkbox_item.setCheckState(Qt.Checked if match["replace"] else Qt.Unchecked)
             self.matches_table.setItem(i, 3, checkbox_item)
-            
+
             # Connect checkbox state change to update internal match data
             checkbox_item.setData(Qt.UserRole, i) # Store row index
             # This would require connecting signal, which is more complex for direct table item
@@ -248,7 +261,7 @@ class BatchReplaceDialog(QDialog):
     def _confirm_replacements(self):
         replacements_to_emit = []
         replace_text = self.replace_with_input.text()
-        
+
         # Get fixed font size if enabled
         fixed_fontsize = None
         if self.use_fixed_font_checkbox.isChecked():

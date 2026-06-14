@@ -83,7 +83,11 @@ def test_legacy_import_path_still_works():
     """Backward-compat shim re-exports must remain functional."""
     from app.operations_service import (
         ApplyResult as Shim_ApplyResult,
+    )
+    from app.operations_service import (
         OpWarning as Shim_OpWarning,
+    )
+    from app.operations_service import (
         WarningReport as Shim_WarningReport,
     )
     assert Shim_ApplyResult is ApplyResult

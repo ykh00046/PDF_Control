@@ -5,7 +5,8 @@ import json
 import locale
 import os
 import sys
-from typing import Dict, Any
+from typing import Any, Dict
+
 from app.logger import get_logger
 from app.path_helper import get_i18n_path
 

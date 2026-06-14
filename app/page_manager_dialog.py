@@ -10,16 +10,25 @@ Provides a visual interface for managing PDF pages:
 """
 
 import fitz
+from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtGui import QAction, QIcon, QImage, QPixmap
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget,
-    QListWidgetItem, QAbstractItemView, QMessageBox, QLabel,
-    QToolBar, QSizePolicy, QFileDialog
+    QAbstractItemView,
+    QDialog,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QMessageBox,
+    QPushButton,
+    QToolBar,
+    QVBoxLayout,
 )
-from PySide6.QtGui import QPixmap, QImage, QIcon, QAction
-from PySide6.QtCore import Qt, Signal, QSize
+
 from app.i18n import tr
 from app.logger import get_logger
-from app.page_split import SplitMode, compute_split_groups
+from app.page_split import compute_split_groups
 from app.split_dialog import SplitDialog
 
 # Thumbnail rendering constants

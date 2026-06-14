@@ -36,6 +36,7 @@ def test_path_helper_resolves_resources_in_frozen_mode(tmp_path, monkeypatch):
     monkeypatch.setattr(sys, "_MEIPASS", str(fake_meipass), raising=False)
 
     import importlib
+
     import app.path_helper as ph
     importlib.reload(ph)
 
@@ -61,6 +62,7 @@ def test_app_data_dir_isolates_under_env_override(tmp_path, monkeypatch):
     target = tmp_path / "custom_appdata"
     monkeypatch.setenv("PDF_CONTROL_APP_DATA_DIR", str(target))
     import importlib
+
     import app.path_helper as ph
     importlib.reload(ph)
     assert ph.get_app_data_dir() == target
@@ -95,7 +97,7 @@ def test_spec_does_not_exclude_runtime_dependencies(spec_source):
     excludes_block = match.group(1)
     must_not_exclude = ["fitz", "PIL", "PySide6", "app\\."]
     for token in must_not_exclude:
-        assert not re.search(rf"['\"]" + token, excludes_block), \
+        assert not re.search(r"['\"]" + token, excludes_block), \
             f"Runtime dependency {token!r} incorrectly listed in excludes"
 
 

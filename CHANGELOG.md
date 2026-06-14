@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Fixed: text export's "page range" option now works — entering a range like "1-3, 5, 7-9" exports exactly those pages. Previously selecting the range option silently exported only the current page.
+- Internal: consolidated tool configuration into pyproject.toml (pytest + mypy + the new ruff linter), added a ruff lint gate to CI, and cleaned up lint violations across the codebase.
 - Added image watermarks: Tools → "Add Image Watermark..." (Ctrl+Shift+I) overlays a semi-transparent image (e.g. a logo) on the current page or every page, with adjustable opacity, size, and 90-degree rotation.
 - Added text watermarks: Tools → "Add Watermark..." (Ctrl+Shift+W) overlays semi-transparent, diagonal text (e.g. "CONFIDENTIAL", "DRAFT") on the current page or every page, with adjustable text, size, color, opacity, and angle.
 - Improved: saving now shows a wait cursor and a "Saving..." status so a large document's save no longer looks like the app has frozen.

@@ -7,6 +7,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
 from app.path_helper import get_logs_dir
 
 # Global logger instance

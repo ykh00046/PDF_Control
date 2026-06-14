@@ -1,8 +1,11 @@
-from PySide6.QtCore import QObject, Signal
 from typing import Any, Callable, List, Optional, Sequence, Tuple
-from app.model import DocumentSession, Operation, WatermarkImage, WatermarkText
+
+from PySide6.QtCore import QObject, Signal
+
 from app.encryption import EncryptedPDFError
 from app.logger import get_logger
+from app.model import DocumentSession, Operation, WatermarkImage, WatermarkText
+
 
 class EditorController(QObject):
     """

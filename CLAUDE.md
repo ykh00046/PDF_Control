@@ -211,6 +211,10 @@ _None currently tracked. Open a new item here if one surfaces._
 
 - ~~텍스트 내보내기 "페이지 범위" 끊긴 연결~~: `TextExportDialog`에 range 라디오/입력란은 있었으나 `get_settings()`가 range를 버려(scope를 all/current로만, range_edit 미독) 범위 선택 시 **현재 페이지만 조용히 내보내짐**. 또 `tr()`로 참조하는 `text_export.scope.range`/`range.placeholder` i18n 키가 en/ko 양쪽에 **없었음**(패리티 동수라 미검출). 수정: get_settings 3-scope+range 반환, `apply_text_export`가 기존 `parse_page_ranges`(재사용) 파싱→평탄화→`resolve_indices` 정렬·중복제거. ValueError 안전 중단. 누락 i18n 3키 복구. 백엔드 신규 0(연결만). 287 tests pass. 후보: validate_i18n에 tr() 참조 키 검증 추가.
 
+### Added (2026-06-15, pyproject-ruff PDCA)
+
+- **설정 통합 + ruff 린터**: `pytest.ini`/`mypy.ini`를 `pyproject.toml`로 통합(`[tool.ruff]`/`[tool.pytest.ini_options]`/`[tool.mypy]`+4 override), 두 ini 삭제. ruff 0.14.4 도입(requirements 핀 + CI `ruff check` 단계, pytest 전). line-length 120(측정: 88이면 E501 48, 120이면 9). 위반 261→0: 자동수정 176 + W293 docstring 23 + 수동(E712/F841/E701/E501). **mypy strict 약화 방지**: 변환이 strict를 끄면 0 에러가 유지돼 test_mypy가 못 잡으므로 — strict 적용 스모크(untyped def 임시 삽입→mypy 검출 확인) + 4 strict 그룹 1:1 대조. TOML은 UTF-8이라 r4 mypy.ini cp949 함정도 해소. F841 제거(batch_replace page_model/words 등)는 match dict 계약 무관·동작 불변. 294 tests pass, ruff 0.
+
 ### Added (2026-06-14, image-watermark PDCA)
 
 - **이미지 워터마크**: Tools→"Add Image Watermark…"(Ctrl+Shift+I) — 이미지(로고)를 반투명 오버레이로 현재/전체 페이지에. `WatermarkImage` op(watermark.py). **PyMuPDF 제약**(probe+Context7): `insert_image`는 opacity 인자 없음(alpha deprecated)→**Pixmap 알파 우회**(`Pixmap(path)`→`Pixmap(pix,1)`→`set_alpha(int(opacity*255))`), 회전 0/90/180/270만(rotate=45 에러)→콤보 제한(텍스트 워터마크 임의각도와 비대칭). 파일 부재/로드 실패는 no-op(로그, 렌더 비파괴). applicator Pass 5에 `(WatermarkText, WatermarkImage)` 공유. `controller.add_image_watermark`(Qt-free), `ImageWatermarkDialog`(파일 미선택 거부). i18n 13키. 294 tests pass.

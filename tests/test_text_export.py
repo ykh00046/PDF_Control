@@ -1,6 +1,7 @@
 """Tests for text export (extract_text / export_text)."""
-import pytest
 import fitz
+import pytest
+
 from app.model import DocumentSession
 
 

@@ -32,14 +32,14 @@ from PySide6.QtWidgets import (
 
 from app.config import get_config_value, load_config
 from app.controller import EditorController
-from app.i18n import load_translations, tr
-from app.logger import get_logger, setup_logger
 from app.handlers import (
     DialogHandlerMixin,
     EditHandlerMixin,
     FileHandlerMixin,
     StateUpdateMixin,
 )
+from app.i18n import load_translations, tr
+from app.logger import get_logger, setup_logger
 from app.ui_menu import MenuBuilder, ShortcutBuilder
 from app.ui_statusbar import StatusBarManager
 from app.ui_toolbar import ToolbarBuilder

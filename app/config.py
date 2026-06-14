@@ -1,11 +1,12 @@
 # app/config.py
 # Configuration management for persistent settings
 
-import json
 import copy
+import json
 import os
 from pathlib import Path
 from typing import Any, Dict
+
 from app.logger import get_logger
 from app.path_helper import get_config_path, get_resource_path
 

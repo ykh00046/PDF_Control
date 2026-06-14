@@ -1,6 +1,5 @@
 """Tests for PDF encryption / password protection (pdf-encryption PDCA)."""
 import fitz
-import pytest
 
 from app.config import (
     ENCRYPTION_DEFAULT_ALLOW_ANNOTATE,
@@ -15,7 +14,6 @@ from app.encryption import (
     EncryptionSettings,
 )
 from app.pdf_engine import save_document_copy
-
 
 # ── Policy: is_active ───────────────────────────────────────────────
 
