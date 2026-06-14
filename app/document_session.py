@@ -143,9 +143,16 @@ class DocumentSession(QObject):
         logger = get_logger()
         try:
             logger.info(f"Saving document: {len(self.history)} operations to apply")
+            # Snapshot the CURRENT document (page-management changes baked in,
+            # plaintext) as the save source. Re-opening self.file_path instead
+            # would silently drop every delete/rotate/move/reorder, since those
+            # mutate self.doc directly and never touch the history op list
+            # (save-integrity, 2026-06-14). history op redactions apply to this
+            # throwaway buffer copy, leaving self.doc intact for preview/edit.
             save_document_copy(
                 self.file_path, output_path, self.history,
                 logger=logger, encryption=encryption, password=self._password,
+                source_bytes=self.doc.tobytes(),
             )
 
             # The reload password matches whatever protection the *output* now

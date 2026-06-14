@@ -90,19 +90,33 @@ def save_document_copy(
     logger: logging.Logger | None = None,
     encryption: EncryptionSettings | None = None,
     password: str | None = None,
+    source_bytes: bytes | None = None,
 ) -> None:
     """Save a copy of the source document with operations applied.
 
-    ``password`` unlocks an encrypted *source* before applying operations.
-    When ``encryption`` is an active :class:`~app.encryption.EncryptionSettings`,
-    its save kwargs (method, passwords, permissions) are merged into the save
-    call; otherwise the document is saved unencrypted. The two are independent:
-    a protected source can be saved as a plain copy (decrypt) and vice versa.
+    Source selection:
+
+    * ``source_bytes`` (preferred) -- an in-memory snapshot of the CURRENT
+      document, with page-management changes (delete/rotate/move/duplicate/
+      merge/reorder) already baked in and the content in plaintext. Opened
+      directly, so ``password`` is irrelevant here. The session passes this
+      so those changes are actually written (without it they were silently
+      lost -- save-integrity, 2026-06-14).
+    * ``source_path`` (legacy / direct callers) -- re-opens the ORIGINAL file
+      and applies operations on top; ``password`` unlocks an encrypted source.
+
+    ``encryption`` controls the OUTPUT protection independently of the source:
+    an active :class:`~app.encryption.EncryptionSettings` merges its save
+    kwargs (method, passwords, permissions); otherwise the output is plain.
+    A protected source can be saved as a plain copy (decrypt) and vice versa.
     """
     logger = logger or get_logger()
     document = None
     try:
-        document = open_document(source_path, password=password)
+        if source_bytes is not None:
+            document = fitz.open("pdf", source_bytes)
+        else:
+            document = open_document(source_path, password=password)
         apply_document_operations(document, operations, mode=ApplyMode.SAVE, logger=logger)
         save_kwargs: Dict[str, Any] = {"garbage": 3, "deflate": True}
         if encryption is not None:

@@ -124,6 +124,48 @@ def test_session_decrypt_round_trip(encrypted_pdf, tmp_path):
         session.close()
 
 
+def test_encrypted_delete_then_decrypt_save(encrypted_pdf, tmp_path):
+    """save-integrity + decrypt: a page deleted on an encrypted doc must be
+    gone from the plain output (not resurrected by re-opening the source)."""
+    session = DocumentSession(str(encrypted_pdf), password="open123")
+    try:
+        before = session.doc.page_count
+        session.insert_blank_page()  # ensure >= 2 pages so a delete is valid
+        session.delete_pages([0])
+        expected = before  # +1 inserted, -1 deleted
+        out = str(tmp_path / "enc_pm.pdf")
+        session.save_document(out, encryption=None)  # decrypt
+
+        doc = fitz.open(out)
+        try:
+            assert not doc.needs_pass
+            assert doc.page_count == expected
+        finally:
+            doc.close()
+    finally:
+        session.close()
+
+
+def test_encrypted_reencrypt_after_page_mgmt(encrypted_pdf, tmp_path):
+    """Page-management change + re-encrypt: change persists, output protected."""
+    session = DocumentSession(str(encrypted_pdf), password="open123")
+    try:
+        session.insert_blank_page()
+        expected = session.doc.page_count
+        out = str(tmp_path / "enc_pm_re.pdf")
+        session.save_document(out, encryption=EncryptionSettings(user_password="new456"))
+
+        doc = fitz.open(out)
+        try:
+            assert doc.needs_pass
+            assert doc.authenticate("new456") > 0
+            assert doc.page_count == expected
+        finally:
+            doc.close()
+    finally:
+        session.close()
+
+
 def test_session_re_encrypt_after_open(encrypted_pdf, tmp_path):
     """Open encrypted → save with a NEW password → session stays readable + encrypted."""
     session = DocumentSession(str(encrypted_pdf), password="open123")

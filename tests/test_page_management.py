@@ -1,7 +1,7 @@
 """Tests for page management operations (rotate, delete, reorder, insert)."""
 import pytest
 import fitz
-from app.model import DocumentSession, RedactDelete
+from app.model import DocumentSession, RedactDelete, RedactReplace
 
 
 @pytest.fixture
@@ -405,3 +405,91 @@ class TestMergePdf:
         assert op_after.page_index == 4
         assert "Page 3" in session.doc[op_after.page_index].get_text()
         session.close()
+
+
+class TestSaveIntegrity:
+    """save-integrity: page-management changes must survive a save.
+
+    Regression net for the 2026-06-14 data-loss bug where save re-opened the
+    ORIGINAL file and dropped every delete/rotate/move/reorder.
+    """
+
+    def _saved(self, tmp_path, name="out.pdf"):
+        return str(tmp_path / name)
+
+    def test_delete_then_save_persists_deletion(self, multi_page_pdf, tmp_path):
+        session = DocumentSession(multi_page_pdf)
+        session.delete_pages([1, 3])  # 5 -> 3 ; keeps Page 1/3/5
+        out = self._saved(tmp_path)
+        session.save_document(out)
+        session.close()
+
+        doc = fitz.open(out)
+        try:
+            assert doc.page_count == 3
+            texts = [doc[i].get_text().strip() for i in range(doc.page_count)]
+            assert texts == ["Page 1", "Page 3", "Page 5"]
+        finally:
+            doc.close()
+
+    def test_reorder_then_save_persists_order(self, multi_page_pdf, tmp_path):
+        session = DocumentSession(multi_page_pdf)
+        session.reorder_pages([2, 0, 1, 3, 4])  # Page 3 first
+        out = self._saved(tmp_path)
+        session.save_document(out)
+        session.close()
+
+        doc = fitz.open(out)
+        try:
+            assert "Page 3" in doc[0].get_text()
+        finally:
+            doc.close()
+
+    def test_rotate_then_save_persists_rotation(self, multi_page_pdf, tmp_path):
+        session = DocumentSession(multi_page_pdf)
+        session.rotate_page(0, 90)
+        out = self._saved(tmp_path)
+        session.save_document(out)
+        session.close()
+
+        doc = fitz.open(out)
+        try:
+            assert doc[0].rotation == 90
+        finally:
+            doc.close()
+
+    def test_page_mgmt_and_text_replace_combined(self, multi_page_pdf, tmp_path):
+        session = DocumentSession(multi_page_pdf)
+        # Replace text on what is currently page 2 ("Page 3"), then delete page 0.
+        page = session.doc[2]
+        rect = page.search_for("Page 3")[0]
+        session.add_operation(
+            RedactReplace(2, [fitz.Rect(rect)], "Replaced", fontsize=12)
+        )
+        session.delete_pages([0])  # 5 -> 4 ; op on old idx2 remaps to idx1
+        out = self._saved(tmp_path)
+        session.save_document(out)
+        session.close()
+
+        doc = fitz.open(out)
+        try:
+            assert doc.page_count == 4
+            all_text = "".join(doc[i].get_text() for i in range(doc.page_count))
+            assert "Replaced" in all_text
+            assert "Page 3" not in all_text  # original text was redacted away
+        finally:
+            doc.close()
+
+    def test_plain_save_unchanged_when_no_page_mgmt(self, multi_page_pdf, tmp_path):
+        session = DocumentSession(multi_page_pdf)
+        out = self._saved(tmp_path)
+        session.save_document(out)
+        session.close()
+
+        doc = fitz.open(out)
+        try:
+            assert doc.page_count == 5
+            texts = [doc[i].get_text().strip() for i in range(5)]
+            assert texts == [f"Page {i + 1}" for i in range(5)]
+        finally:
+            doc.close()

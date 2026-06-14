@@ -207,6 +207,10 @@ _None currently tracked. Open a new item here if one surfaces._
 
 - ~~Long Text in Narrow Areas~~: Structured `OpWarning` surfaces shrink/overflow into status bar, history badge, and save-time guard (`app/operations_service.py:33-60`, `app/ui.py:780-822`)
 
+### Resolved (2026-06-14, save-integrity PDCA)
+
+- ~~페이지 관리 변경이 저장 시 손실(데이터 손실)~~: 삭제/회전/이동/복제/병합/재배열이 저장된 파일에 반영 안 되던 버그. `save_document`가 `save_document_copy(self.file_path, ...)`로 **원본 파일을 재오픈**해 history op만 적용했는데, 페이지 관리는 `self.doc` 직접 수정이라 손실됐다(단일 저장 경로, r7 히스토리 보존도 무력화). 수정: `save_document_copy(source_bytes=)` 신설 → 세션이 `self.doc.tobytes()`(페이지 관리 반영 평문 스냅샷, 암호화 문서도 인증 시 평문) 전달. history redaction은 throwaway 버퍼에만 적용돼 `self.doc` 무손상. 출력 암호화/복호화/재바인드 불변, 레거시 source_path 100% 하위 호환. `source_bytes`는 차기 async-save의 워커 입력 구조와 동일. async-save 실측 중 발견. 268 tests pass(저장 *파일*의 페이지 수/순서/회전 직접 검증 — r7 보강).
+
 ### Added (2026-06-13, embedded-font-reuse PDCA)
 
 - **임베디드 폰트 재사용 (충실도 체인 최종 단계)**: text-fidelity의 후속. 원본 폰트가 시스템에 **미설치**여도 PDF에 박힌 폰트 프로그램을 추출해 교체에 재사용. `fonts.extract_embedded_font(page, source_fontname, must_cover)` — span 폰트명↔basefont를 `_font_name_candidates` 교집합으로 매칭, `doc.extract_font`→`fitz.Font(fontbuffer=)`+글리프 커버리지 검증. 서브셋 임베드는 cmap 제거(Identity-H)로 `has_glyph`=0이라 자동 거부(안전 폴백, 실측 확인). applicator 우선순위 `op.fontfile > 시스템 매칭 > 임베디드 재사용 > Base-14`, resolved 튜플 `(alias, fontfile, fontbuffer)`. **핵심 함정**: `apply_redactions`가 미참조 폰트 리소스를 스트립 → 추출은 redaction *전*(`_prepare_fonts`), 등록은 *후*(신설 `_register_fonts` Pass 2.5)로 분리해야 "need font file or buffer" 회피. 임베디드 별칭은 버퍼 crc32 기반(`emb{crc32:08x}`)으로 배치 다중폰트 교차오염 방지. preview=save 단일 경로 보장. 261 tests pass.
