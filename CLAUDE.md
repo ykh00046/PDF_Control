@@ -211,6 +211,10 @@ _None currently tracked. Open a new item here if one surfaces._
 
 - ~~텍스트 내보내기 "페이지 범위" 끊긴 연결~~: `TextExportDialog`에 range 라디오/입력란은 있었으나 `get_settings()`가 range를 버려(scope를 all/current로만, range_edit 미독) 범위 선택 시 **현재 페이지만 조용히 내보내짐**. 또 `tr()`로 참조하는 `text_export.scope.range`/`range.placeholder` i18n 키가 en/ko 양쪽에 **없었음**(패리티 동수라 미검출). 수정: get_settings 3-scope+range 반환, `apply_text_export`가 기존 `parse_page_ranges`(재사용) 파싱→평탄화→`resolve_indices` 정렬·중복제거. ValueError 안전 중단. 누락 i18n 3키 복구. 백엔드 신규 0(연결만). 287 tests pass. 후보: validate_i18n에 tr() 참조 키 검증 추가.
 
+### Resolved (2026-06-15, validate-i18n-refs PDCA)
+
+- ~~i18n 검증 공백 + remove_section UI 키 노출~~: `validate_i18n`이 키 동수만 검사해 `tr()`로 참조하지만 en/ko **양쪽 다 없는** 키를 못 잡던 공백 폐쇄. 측정 중 실재 버그 발견 — `remove_section_dialog`의 정밀 좌표 UI 5개 키(`remove.precision.title`/`info.y0`/`info.y1`/`snap.top`/`snap.bottom`)가 양쪽 누락 + `tr("X") if "X" in tr("X") else "fb"` 깨진 관용구(tr이 키 반환→`in` 항상 True→fallback 죽은 코드→**UI에 raw 키 노출**). 수정: `extract_tr_keys`(정적 리터럴, f-string/`{}` 제외)+`validate_tr_references` 검증 추가, `test_all_tr_keys_exist` 테스트, 관용구 단순화 + 5키 en/ko 추가. 295 tests pass.
+
 ### Added (2026-06-15, pyproject-ruff PDCA)
 
 - **설정 통합 + ruff 린터**: `pytest.ini`/`mypy.ini`를 `pyproject.toml`로 통합(`[tool.ruff]`/`[tool.pytest.ini_options]`/`[tool.mypy]`+4 override), 두 ini 삭제. ruff 0.14.4 도입(requirements 핀 + CI `ruff check` 단계, pytest 전). line-length 120(측정: 88이면 E501 48, 120이면 9). 위반 261→0: 자동수정 176 + W293 docstring 23 + 수동(E712/F841/E701/E501). **mypy strict 약화 방지**: 변환이 strict를 끄면 0 에러가 유지돼 test_mypy가 못 잡으므로 — strict 적용 스모크(untyped def 임시 삽입→mypy 검출 확인) + 4 strict 그룹 1:1 대조. TOML은 UTF-8이라 r4 mypy.ini cp949 함정도 해소. F841 제거(batch_replace page_model/words 등)는 match dict 계약 무관·동작 불변. 294 tests pass, ruff 0.

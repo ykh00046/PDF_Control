@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Fixed: text export's "page range" option now works — entering a range like "1-3, 5, 7-9" exports exactly those pages. Previously selecting the range option silently exported only the current page.
+- Fixed: the Remove Section precision-coordinate dialog showed raw i18n keys (e.g. "remove.precision.title") instead of proper labels, because those keys were missing from the translation files; added the missing English/Korean labels and a validator check that catches any tr() key absent from the translations.
 - Internal: consolidated tool configuration into pyproject.toml (pytest + mypy + the new ruff linter), added a ruff lint gate to CI, and cleaned up lint violations across the codebase.
 - Added image watermarks: Tools → "Add Image Watermark..." (Ctrl+Shift+I) overlays a semi-transparent image (e.g. a logo) on the current page or every page, with adjustable opacity, size, and 90-degree rotation.
 - Added text watermarks: Tools → "Add Watermark..." (Ctrl+Shift+W) overlays semi-transparent, diagonal text (e.g. "CONFIDENTIAL", "DRAFT") on the current page or every page, with adjustable text, size, color, opacity, and angle.

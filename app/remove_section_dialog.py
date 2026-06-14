@@ -45,16 +45,12 @@ class RemoveSectionDialog(QDialog):
         layout.addWidget(warning_label)
 
         # 2. 정밀 좌표 입력 그룹
-        coord_group = QGroupBox(
-            tr("remove.precision.title")
-            if "remove.precision.title" in tr("remove.precision.title")
-            else "Precision Adjustment"
-        )
+        coord_group = QGroupBox(tr("remove.precision.title"))
         coord_layout = QVBoxLayout(coord_group)
 
         # Y0 (상단)
         y0_layout = QHBoxLayout()
-        y0_label = QLabel(f"{tr('remove.info.y0') if 'remove.info.y0' in tr('remove.info.y0') else 'Top (Y0)'}:")
+        y0_label = QLabel(f"{tr('remove.info.y0')}:")
         self.y0_spin = QDoubleSpinBox()
         self.y0_spin.setRange(0, self.page_rect.height)
         self.y0_spin.setValue(self.selected_rect.y0)
@@ -62,7 +58,7 @@ class RemoveSectionDialog(QDialog):
         self.y0_spin.setDecimals(1)
         self.y0_spin.valueChanged.connect(self._on_coords_changed)
 
-        y0_snap_btn = QPushButton(tr("remove.snap.top") if "remove.snap.top" in tr("remove.snap.top") else "To Top")
+        y0_snap_btn = QPushButton(tr("remove.snap.top"))
         y0_snap_btn.setFixedWidth(80)
         y0_snap_btn.clicked.connect(lambda: self.y0_spin.setValue(0))
 
@@ -73,7 +69,7 @@ class RemoveSectionDialog(QDialog):
 
         # Y1 (하단)
         y1_layout = QHBoxLayout()
-        y1_label = QLabel(f"{tr('remove.info.y1') if 'remove.info.y1' in tr('remove.info.y1') else 'Bottom (Y1)'}:")
+        y1_label = QLabel(f"{tr('remove.info.y1')}:")
         self.y1_spin = QDoubleSpinBox()
         self.y1_spin.setRange(0, self.page_rect.height)
         self.y1_spin.setValue(self.selected_rect.y1)
@@ -81,11 +77,7 @@ class RemoveSectionDialog(QDialog):
         self.y1_spin.setDecimals(1)
         self.y1_spin.valueChanged.connect(self._on_coords_changed)
 
-        y1_snap_btn = QPushButton(
-            tr("remove.snap.bottom")
-            if "remove.snap.bottom" in tr("remove.snap.bottom")
-            else "To Bottom"
-        )
+        y1_snap_btn = QPushButton(tr("remove.snap.bottom"))
         y1_snap_btn.setFixedWidth(80)
         y1_snap_btn.clicked.connect(lambda: self.y1_spin.setValue(self.page_rect.height))
 

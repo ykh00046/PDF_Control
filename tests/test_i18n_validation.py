@@ -36,3 +36,18 @@ def test_format_placeholders_match(validator):
     v.errors.clear()
     v.validate_format_strings(en, ko, "en.json", "ko.json")
     assert not v.errors, "Format placeholder mismatch:\n" + "\n".join(v.errors)
+
+
+def test_all_tr_keys_exist(validator):
+    """Every static tr() key in app/ must exist in BOTH en and ko.
+
+    Regression net for the failure mode where a dialog references a key
+    absent from both files: the parity check passes (key-count equal) but
+    tr() echoes the raw key in the UI (text-export-range, image labels).
+    """
+    v, en, ko = validator
+    app_dir = Path(__file__).parent.parent / "app"
+    v.errors.clear()
+    v.validate_tr_references(app_dir, en, "en.json")
+    v.validate_tr_references(app_dir, ko, "ko.json")
+    assert not v.errors, "Missing tr() keys:\n" + "\n".join(v.errors)

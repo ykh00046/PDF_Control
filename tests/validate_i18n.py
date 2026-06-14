@@ -41,6 +41,41 @@ class I18nValidator:
         """Extract format placeholders like {0}, {1} from text."""
         return set(re.findall(r"\{(\d+)\}", text))
 
+    # Static ``tr("literal")`` / ``tr('literal')`` calls. Excludes f-strings
+    # and keys containing ``{}`` (dynamic keys can't be checked statically).
+    _TR_CALL = re.compile(r"""\btr\(\s*["']([^"'{}]+)["']""")
+
+    def extract_tr_keys(self, source_dir: Path) -> Dict[str, List[str]]:
+        """Collect static tr() keys referenced under ``source_dir``.
+
+        Returns a mapping of key -> list of files referencing it. Dynamic
+        keys (f-strings / ``{}`` interpolation) are intentionally skipped, so
+        this is a lower bound: it never produces false positives.
+        """
+        keys: Dict[str, List[str]] = {}
+        for py_file in source_dir.rglob("*.py"):
+            text = py_file.read_text(encoding="utf-8")
+            for match in self._TR_CALL.finditer(text):
+                keys.setdefault(match.group(1), []).append(py_file.name)
+        return keys
+
+    def validate_tr_references(
+        self, source_dir: Path, translations: Dict[str, str], locale_name: str
+    ) -> None:
+        """Every static tr() key in the source must exist in ``translations``.
+
+        Catches the failure mode where a dialog references a key that is
+        absent from BOTH en and ko -- the key-count parity check passes but
+        tr() falls back to echoing the raw key in the UI.
+        """
+        tr_keys = self.extract_tr_keys(source_dir)
+        for key, files in sorted(tr_keys.items()):
+            if key not in translations:
+                self.errors.append(
+                    f"ERROR: tr() key '{key}' (used in {sorted(set(files))}) "
+                    f"is missing from {locale_name}"
+                )
+
     def validate_keys(
         self,
         base: Dict[str, str],
@@ -100,6 +135,11 @@ class I18nValidator:
         self.validate_keys(en, ko, "en.json", "ko.json")
         self.validate_keys(ko, en, "ko.json", "en.json")
         self.validate_format_strings(en, ko, "en.json", "ko.json")
+
+        app_dir = self.i18n_dir.parent
+        self.validate_tr_references(app_dir, en, "en.json")
+        self.validate_tr_references(app_dir, ko, "ko.json")
+
         self.print_results()
 
         return len(self.errors) == 0
