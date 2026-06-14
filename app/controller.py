@@ -1,6 +1,6 @@
 from PySide6.QtCore import QObject, Signal
 from typing import Any, Callable, List, Optional, Sequence, Tuple
-from app.model import DocumentSession, Operation, WatermarkText
+from app.model import DocumentSession, Operation, WatermarkImage, WatermarkText
 from app.encryption import EncryptedPDFError
 from app.logger import get_logger
 
@@ -229,6 +229,26 @@ class EditorController(QObject):
                     WatermarkText(i, text, fontsize, color, opacity, angle)
                 )
         return bool(self._run_session_action("add watermark", run))
+
+    def add_image_watermark(
+        self,
+        page_indices: Sequence[int],
+        image_path: str,
+        opacity: float = 0.3,
+        scale: float = 0.5,
+        rotate: int = 0,
+    ) -> bool:
+        """Add an image watermark to each page in ``page_indices``.
+
+        Same per-page pattern as :meth:`add_watermark`; the handler decides the
+        scope so the controller stays Qt/view free.
+        """
+        def run(s: DocumentSession) -> None:
+            for i in page_indices:
+                s.add_operation(
+                    WatermarkImage(i, image_path, opacity, scale, rotate)
+                )
+        return bool(self._run_session_action("add image watermark", run))
 
     def _on_history_changed(self):
         """Relay session history changed signal."""

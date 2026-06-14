@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Fixed: text export's "page range" option now works — entering a range like "1-3, 5, 7-9" exports exactly those pages. Previously selecting the range option silently exported only the current page.
+- Added image watermarks: Tools → "Add Image Watermark..." (Ctrl+Shift+I) overlays a semi-transparent image (e.g. a logo) on the current page or every page, with adjustable opacity, size, and 90-degree rotation.
 - Added text watermarks: Tools → "Add Watermark..." (Ctrl+Shift+W) overlays semi-transparent, diagonal text (e.g. "CONFIDENTIAL", "DRAFT") on the current page or every page, with adjustable text, size, color, opacity, and angle.
 - Improved: saving now shows a wait cursor and a "Saving..." status so a large document's save no longer looks like the app has frozen.
 - Fixed (data loss): page changes — deleting, rotating, moving, duplicating, merging, or reordering pages — were silently discarded when you saved (the save re-read the original file and applied only text edits). Saving now writes the document exactly as you see it, with both page changes and text edits. Encrypted save/decrypt is unaffected.

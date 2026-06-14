@@ -1,12 +1,21 @@
-"""Text watermark operation + controller integration (watermark PDCA)."""
+"""Text + image watermark operations and controller integration (watermark PDCA)."""
 import fitz
 import pytest
 
 from app.controller import EditorController
 from app.operations import ApplyMode, OperationApplicator
-from app.operations.watermark import WatermarkText
+from app.operations.watermark import WatermarkImage, WatermarkText
 
 WM = "CONFIDENTIAL"
+
+
+def _make_logo(tmp_path):
+    """Write a small opaque RGB watermark image, return its path."""
+    pix = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 120, 120))
+    pix.set_rect(pix.irect, (200, 0, 0))
+    path = tmp_path / "logo.png"
+    pix.save(str(path))
+    return str(path)
 
 
 def _page_text(doc):
@@ -163,3 +172,84 @@ def test_dialog_empty_text_rejected(qtbot):
 
     assert emitted == []  # nothing emitted
     assert dialog.result() == WatermarkDialog.DialogCode.Rejected
+
+
+# ── image watermark (image-watermark PDCA) ───────────────────────────
+
+def test_image_watermark_renders(tmp_path):
+    logo = _make_logo(tmp_path)
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+    page.insert_text((72, 100), "Body content", fontsize=12)
+    WatermarkImage(0, logo, opacity=0.3, scale=0.5).apply(page)
+    out = tmp_path / "imgwm.pdf"
+    doc.save(str(out), garbage=3, deflate=True)
+    doc.close()
+
+    chk = fitz.open(str(out))
+    try:
+        assert len(chk[0].get_images()) == 1
+        assert "Body content" in chk[0].get_text()
+    finally:
+        chk.close()
+
+
+def test_image_watermark_missing_file_noop():
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+    WatermarkImage(0, "/no/such/file.png").apply(page)  # must not raise
+    assert len(page.get_images()) == 0
+    doc.close()
+
+
+def test_image_watermark_preview_save_equivalence(tmp_path):
+    logo = _make_logo(tmp_path)
+    applicator = OperationApplicator()
+
+    def render(mode):
+        doc = fitz.open()
+        page = doc.new_page(width=595, height=842)
+        applicator.apply_operations(page, [WatermarkImage(0, logo)], mode)
+        n = len(page.get_images())
+        doc.close()
+        return n
+
+    assert render(ApplyMode.SAVE) == 1
+    assert render(ApplyMode.PREVIEW) == 1
+
+
+def test_add_image_watermark_all_pages(three_page_pdf, tmp_path):
+    logo = _make_logo(tmp_path)
+    controller = EditorController()
+    assert controller.load_document(three_page_pdf) is True
+    try:
+        all_indices = list(range(controller.session.doc.page_count))
+        assert controller.add_image_watermark(all_indices, logo) is True
+        img_ops = [
+            op for op in controller.session.history
+            if isinstance(op, WatermarkImage)
+        ]
+        assert len(img_ops) == 3
+
+        out = str(tmp_path / "all_imgwm.pdf")
+        controller.save_document(out)
+        doc = fitz.open(out)
+        try:
+            assert all(len(doc[i].get_images()) >= 1 for i in range(doc.page_count))
+        finally:
+            doc.close()
+    finally:
+        controller.close_document()
+
+
+def test_image_watermark_dialog_requires_file(qtbot):
+    from app.image_watermark_dialog import ImageWatermarkDialog
+
+    dialog = ImageWatermarkDialog()
+    qtbot.addWidget(dialog)
+    # No file chosen yet.
+    emitted = []
+    dialog.image_watermark_confirmed.connect(emitted.append)
+    dialog._apply()
+    assert emitted == []
+    assert dialog.result() == ImageWatermarkDialog.DialogCode.Rejected

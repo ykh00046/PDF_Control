@@ -141,6 +141,11 @@ class MenuBuilder:
         watermark_action.triggered.connect(win.open_watermark_dialog)
         tools_menu.addAction(watermark_action)
 
+        image_watermark_action = QAction(tr("menu.tools.image_watermark"), win)
+        image_watermark_action.setShortcut("Ctrl+Shift+I")
+        image_watermark_action.triggered.connect(win.open_image_watermark_dialog)
+        tools_menu.addAction(image_watermark_action)
+
         tools_menu.addSeparator()
 
         page_manager_action = QAction(tr("menu.tools.page_manager"), win)

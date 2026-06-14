@@ -42,7 +42,7 @@ class Operation(ABC):
         from app.operations.crop import CropMargins
         from app.operations.redact import RedactDelete, RedactReplace
         from app.operations.remove_section import RemoveSectionAsImage
-        from app.operations.watermark import WatermarkText
+        from app.operations.watermark import WatermarkImage, WatermarkText
 
         op_type = data["type"]
         page_index = data["page_index"]
@@ -85,6 +85,14 @@ class Operation(ABC):
                 tuple(wm_color) if wm_color else (0.5, 0.5, 0.5),
                 data.get("opacity", 0.3),
                 data.get("angle", 45.0),
+            )
+        elif op_type == "WatermarkImage":
+            return WatermarkImage(
+                page_index,
+                data["image_path"],
+                data.get("opacity", 0.3),
+                data.get("scale", 0.5),
+                data.get("rotate", 0),
             )
         else:
             raise ValueError(f"Unknown operation type: {op_type}")

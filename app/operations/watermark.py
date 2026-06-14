@@ -5,10 +5,12 @@ the page content without removing anything, so the SAVE and PREVIEW paths
 share the same apply() (no mode-specific branch). Rendered via TextWriter +
 a morph matrix because insert_textbox only supports 90-degree rotations.
 """
+import os
 from typing import Any, Dict, Tuple
 
 import fitz
 
+from app.logger import get_logger
 from app.operations.base import Operation
 
 
@@ -57,5 +59,66 @@ class WatermarkText(Operation):
             "color": list(self.color),
             "opacity": self.opacity,
             "angle": self.angle,
+        })
+        return data
+
+
+class WatermarkImage(Operation):
+    """A semi-transparent image watermark centered on the page.
+
+    Unlike the text watermark, ``insert_image`` has no opacity parameter and
+    only rotates in 90-degree steps, so opacity is applied via the image's
+    alpha channel and ``rotate`` is restricted to {0, 90, 180, 270}.
+    """
+
+    def __init__(
+        self,
+        page_index: int,
+        image_path: str,
+        opacity: float = 0.3,
+        scale: float = 0.5,
+        rotate: int = 0,
+    ) -> None:
+        super().__init__(page_index, [])  # no selection rects
+        self.image_path = image_path
+        self.opacity = opacity   # 0-1
+        self.scale = scale       # fraction of page WIDTH
+        self.rotate = rotate     # 0/90/180/270 (insert_image limitation)
+
+    def apply(self, page: fitz.Page) -> None:
+        """Draw the image centered on the page at ``scale`` * page width.
+
+        A missing/unreadable image is a no-op (logged) so a render is never
+        broken by a watermark whose source file moved after the op was added.
+        """
+        if not self.image_path or not os.path.exists(self.image_path):
+            get_logger().warning(f"Watermark image missing: {self.image_path!r}")
+            return
+        try:
+            pix = fitz.Pixmap(self.image_path)
+            if not pix.alpha:
+                pix = fitz.Pixmap(pix, 1)  # add an alpha channel
+            alpha = max(0, min(255, int(self.opacity * 255)))
+            pix.set_alpha(bytes([alpha] * (pix.width * pix.height)))
+        except Exception as e:  # PyMuPDF/IO errors -> skip, don't break render
+            get_logger().warning(f"Watermark image load failed: {e}")
+            return
+
+        target_w = page.rect.width * self.scale
+        target_h = target_w * pix.height / pix.width
+        cx, cy = page.rect.width / 2, page.rect.height / 2
+        rect = fitz.Rect(
+            cx - target_w / 2, cy - target_h / 2,
+            cx + target_w / 2, cy + target_h / 2,
+        )
+        page.insert_image(rect, pixmap=pix, keep_proportion=True, rotate=self.rotate)
+
+    def to_dict(self) -> Dict[str, Any]:
+        data = super().to_dict()
+        data.update({
+            "image_path": self.image_path,
+            "opacity": self.opacity,
+            "scale": self.scale,
+            "rotate": self.rotate,
         })
         return data

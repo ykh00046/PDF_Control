@@ -243,6 +243,46 @@ class DialogHandlerMixin:
                 f"{settings['text']!r}"
             )
 
+    # --- Image watermark ------------------------------------------------
+    def open_image_watermark_dialog(self: "MainWindow") -> None:  # type: ignore[misc]
+        """Open the image watermark options dialog."""
+        if not self.controller.session:
+            self.statusBar().showMessage(tr("status.no_document_save"))
+            self.logger.warning("Attempted image watermark with no document loaded.")
+            return
+
+        from app.image_watermark_dialog import ImageWatermarkDialog
+
+        dialog = ImageWatermarkDialog(self)
+        dialog.image_watermark_confirmed.connect(self.apply_image_watermark)
+        dialog.exec()
+
+    def apply_image_watermark(self: "MainWindow", settings: dict) -> None:  # type: ignore[misc]
+        """Turn the dialog settings into per-page WatermarkImage operations."""
+        if not self.controller.session:
+            return
+
+        page_count = self.controller.session.doc.page_count
+        if settings["all_pages"]:
+            page_indices = list(range(page_count))
+        else:
+            page_indices = [self.viewer.current_page_index]
+
+        applied = self.controller.add_image_watermark(
+            page_indices,
+            settings["image_path"],
+            opacity=settings["opacity"],
+            scale=settings["scale"],
+            rotate=settings["rotate"],
+        )
+        if applied:
+            self.statusBar().showMessage(
+                tr("status.image_watermark_applied", len(page_indices))
+            )
+            self.logger.info(
+                f"Applied image watermark to {len(page_indices)} page(s)"
+            )
+
     # --- Page manager ---------------------------------------------------
     def open_page_manager_dialog(self: "MainWindow") -> None:  # type: ignore[misc]
         """Open the page manager dialog for reorder/rotate/delete."""

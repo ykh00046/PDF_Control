@@ -38,7 +38,7 @@ from app.operations.redact import RedactDelete, RedactReplace
 from app.operations.remove_section import RemoveSectionAsImage
 from app.operations.types import ApplyMode, TextMetadata
 from app.operations.warnings import ApplyResult, OpWarning
-from app.operations.watermark import WatermarkText
+from app.operations.watermark import WatermarkImage, WatermarkText
 from app.text_metadata import _extract_text_metadata
 
 
@@ -191,7 +191,7 @@ class OperationApplicator:
         # (including a section-removal raster). Non-destructive, so SAVE and
         # PREVIEW share this pass with no mode branch.
         for op in operations:
-            if isinstance(op, WatermarkText):
+            if isinstance(op, (WatermarkText, WatermarkImage)):
                 op.apply(page)
 
         # Collect warnings (counts are derived via properties)

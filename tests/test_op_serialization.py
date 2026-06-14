@@ -14,7 +14,7 @@ from app.operations.base import Operation
 from app.operations.crop import CropMargins
 from app.operations.redact import RedactDelete, RedactReplace
 from app.operations.remove_section import RemoveSectionAsImage
-from app.operations.watermark import WatermarkText
+from app.operations.watermark import WatermarkImage, WatermarkText
 
 
 def _round_trip(op: Operation) -> None:
@@ -85,3 +85,23 @@ def test_watermark_legacy_payload_uses_defaults():
     assert restored.color == (0.5, 0.5, 0.5)
     assert restored.opacity == 0.3
     assert restored.angle == 45.0
+
+
+def test_image_watermark_round_trip():
+    op = WatermarkImage(1, "/tmp/logo.png", opacity=0.4, scale=0.6, rotate=90)
+    _round_trip(op)
+    restored = Operation.from_dict(op.to_dict())
+    assert restored.image_path == "/tmp/logo.png"
+    assert restored.opacity == 0.4
+    assert restored.scale == 0.6
+    assert restored.rotate == 90
+
+
+def test_image_watermark_legacy_payload_uses_defaults():
+    restored = Operation.from_dict({
+        "type": "WatermarkImage", "page_index": 0, "rects": [],
+        "image_path": "/tmp/x.png",
+    })
+    assert restored.opacity == 0.3
+    assert restored.scale == 0.5
+    assert restored.rotate == 0
