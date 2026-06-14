@@ -207,6 +207,10 @@ _None currently tracked. Open a new item here if one surfaces._
 
 - ~~Long Text in Narrow Areas~~: Structured `OpWarning` surfaces shrink/overflow into status bar, history badge, and save-time guard (`app/operations_service.py:33-60`, `app/ui.py:780-822`)
 
+### Resolved (2026-06-14, text-export-range PDCA)
+
+- ~~텍스트 내보내기 "페이지 범위" 끊긴 연결~~: `TextExportDialog`에 range 라디오/입력란은 있었으나 `get_settings()`가 range를 버려(scope를 all/current로만, range_edit 미독) 범위 선택 시 **현재 페이지만 조용히 내보내짐**. 또 `tr()`로 참조하는 `text_export.scope.range`/`range.placeholder` i18n 키가 en/ko 양쪽에 **없었음**(패리티 동수라 미검출). 수정: get_settings 3-scope+range 반환, `apply_text_export`가 기존 `parse_page_ranges`(재사용) 파싱→평탄화→`resolve_indices` 정렬·중복제거. ValueError 안전 중단. 누락 i18n 3키 복구. 백엔드 신규 0(연결만). 287 tests pass. 후보: validate_i18n에 tr() 참조 키 검증 추가.
+
 ### Added (2026-06-14, watermark PDCA)
 
 - **텍스트 워터마크**: Tools→"Add Watermark…"(Ctrl+Shift+W) — 반투명·대각선 텍스트를 현재/전체 페이지에 얹음. `operations/watermark.py` `WatermarkText` op(`fitz.TextWriter`+`morph=(pivot, Matrix(angle))`, 중앙 배치, opacity/color/fontsize/angle). `insert_textbox` rotate가 0/90/180/270만 지원하는 한계 때문에 TextWriter+morph 채택(probe 확인). **비파괴 오버레이**라 applicator **Pass 5(마지막)** 에서 SAVE/PREVIEW 공유 → preview=save 자동. `controller.add_watermark(page_indices, ...)`가 범위 페이지마다 op 생성(batch-replace 패턴, Qt-free — 핸들러가 인덱스 계산). 빈 텍스트는 op·dialog 양쪽 거부. `app/watermark_dialog.py`. i18n 12키. 281 tests pass. 확장 여지: 이미지 워터마크(`WatermarkImage`), 위치 옵션.

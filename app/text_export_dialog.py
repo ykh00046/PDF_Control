@@ -86,10 +86,21 @@ class TextExportDialog(QDialog):
         layout.addWidget(buttons)
 
     def get_settings(self) -> dict:
-        """Return the currently selected export settings."""
+        """Return the currently selected export settings.
+
+        ``scope`` is "all" | "current" | "range"; ``range`` carries the raw
+        page-range spec (only meaningful when scope == "range").
+        """
+        if self.scope_all.isChecked():
+            scope = "all"
+        elif self.scope_range.isChecked():
+            scope = "range"
+        else:
+            scope = "current"
         return {
-            "scope": "all" if self.scope_all.isChecked() else "current",
+            "scope": scope,
             "fmt": self.format_combo.currentData(),
+            "range": self.range_edit.text(),
         }
 
     def _on_accept(self) -> None:

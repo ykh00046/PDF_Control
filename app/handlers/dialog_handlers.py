@@ -289,8 +289,25 @@ class DialogHandlerMixin:
             return
 
         fmt = settings.get("fmt", "txt")
-        if settings.get("scope") == "current":
+        scope = settings.get("scope")
+        if scope == "current":
             page_indices = [self.viewer.current_page_index]
+        elif scope == "range":
+            from app.page_split import parse_page_ranges
+
+            try:
+                groups = parse_page_ranges(
+                    settings.get("range", ""),
+                    self.controller.session.doc.page_count,
+                )
+            except ValueError as e:
+                self.logger.warning(f"Invalid export range: {e}")
+                QMessageBox.warning(
+                    self, tr("dialog.error"), tr("text_export.range.invalid")
+                )
+                return
+            # Flatten groups; resolve_indices (downstream) sorts + dedupes.
+            page_indices = [i for group in groups for i in group]
         else:
             page_indices = None  # whole document
 

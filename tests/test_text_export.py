@@ -109,6 +109,85 @@ class TestExportText:
         session.close()
 
 
+class TestExportRange:
+    """text-export-range: page-range scope wired through parse_page_ranges."""
+
+    def test_range_spec_exports_only_those_pages(self, text_pdf, tmp_path):
+        from app.page_split import parse_page_ranges
+
+        session = DocumentSession(text_pdf)
+        try:
+            # Mirror the handler: parse "1-2, ..." -> flatten -> export.
+            groups = parse_page_ranges("1-2", session.doc.page_count)
+            page_indices = [i for g in groups for i in g]
+            out = tmp_path / "range.txt"
+            session.export_text(str(out), page_indices, "txt")
+            text = out.read_text(encoding="utf-8")
+            assert "Hello page 1" in text
+            assert "Hello page 2" in text
+            assert "Hello page 3" not in text
+        finally:
+            session.close()
+
+    def test_range_non_contiguous(self, text_pdf, tmp_path):
+        from app.page_split import parse_page_ranges
+
+        session = DocumentSession(text_pdf)
+        try:
+            groups = parse_page_ranges("1, 3", session.doc.page_count)
+            page_indices = [i for g in groups for i in g]
+            out = tmp_path / "range2.txt"
+            session.export_text(str(out), page_indices, "txt")
+            text = out.read_text(encoding="utf-8")
+            assert "Hello page 1" in text
+            assert "Hello page 2" not in text
+            assert "Hello page 3" in text
+        finally:
+            session.close()
+
+    def test_invalid_range_raises(self, text_pdf):
+        from app.page_split import parse_page_ranges
+
+        session = DocumentSession(text_pdf)
+        try:
+            with pytest.raises(ValueError):
+                parse_page_ranges("5-9", session.doc.page_count)  # exceeds 3 pages
+            with pytest.raises(ValueError):
+                parse_page_ranges("", session.doc.page_count)  # empty
+        finally:
+            session.close()
+
+
+class TestExportDialogSettings:
+    """Dialog get_settings must surface the range scope + spec (was dropped)."""
+
+    def test_range_scope_returns_spec(self, qtbot):
+        from app.text_export_dialog import TextExportDialog
+
+        dialog = TextExportDialog()
+        qtbot.addWidget(dialog)
+        dialog.scope_range.setChecked(True)
+        dialog.range_edit.setText("2-4, 6")
+        settings = dialog.get_settings()
+        assert settings["scope"] == "range"
+        assert settings["range"] == "2-4, 6"
+
+    def test_all_scope_default(self, qtbot):
+        from app.text_export_dialog import TextExportDialog
+
+        dialog = TextExportDialog()
+        qtbot.addWidget(dialog)
+        assert dialog.get_settings()["scope"] == "all"
+
+    def test_current_scope(self, qtbot):
+        from app.text_export_dialog import TextExportDialog
+
+        dialog = TextExportDialog()
+        qtbot.addWidget(dialog)
+        dialog.scope_current.setChecked(True)
+        assert dialog.get_settings()["scope"] == "current"
+
+
 class TestEngine:
     """Direct unit tests for the Qt-free text_export helpers."""
 
