@@ -18,6 +18,7 @@ from app.operations.base import Operation
 from app.operations.crop import CropMargins
 from app.operations.redact import RedactDelete, RedactReplace
 from app.operations.remove_section import RemoveSectionAsImage
+from app.operations.watermark import WatermarkText
 from app.text_metadata import _extract_text_metadata
 
 __all__ = [
@@ -27,6 +28,7 @@ __all__ = [
     "RedactReplace",
     "CropMargins",
     "RemoveSectionAsImage",
+    "WatermarkText",
     "PageModel",
     "DocumentSession",
     "_extract_text_metadata",

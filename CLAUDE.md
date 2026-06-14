@@ -207,6 +207,10 @@ _None currently tracked. Open a new item here if one surfaces._
 
 - ~~Long Text in Narrow Areas~~: Structured `OpWarning` surfaces shrink/overflow into status bar, history badge, and save-time guard (`app/operations_service.py:33-60`, `app/ui.py:780-822`)
 
+### Added (2026-06-14, watermark PDCA)
+
+- **텍스트 워터마크**: Tools→"Add Watermark…"(Ctrl+Shift+W) — 반투명·대각선 텍스트를 현재/전체 페이지에 얹음. `operations/watermark.py` `WatermarkText` op(`fitz.TextWriter`+`morph=(pivot, Matrix(angle))`, 중앙 배치, opacity/color/fontsize/angle). `insert_textbox` rotate가 0/90/180/270만 지원하는 한계 때문에 TextWriter+morph 채택(probe 확인). **비파괴 오버레이**라 applicator **Pass 5(마지막)** 에서 SAVE/PREVIEW 공유 → preview=save 자동. `controller.add_watermark(page_indices, ...)`가 범위 페이지마다 op 생성(batch-replace 패턴, Qt-free — 핸들러가 인덱스 계산). 빈 텍스트는 op·dialog 양쪽 거부. `app/watermark_dialog.py`. i18n 12키. 281 tests pass. 확장 여지: 이미지 워터마크(`WatermarkImage`), 위치 옵션.
+
 ### Added (2026-06-14, save-busy-indicator PDCA)
 
 - **저장 중 busy 표시**: 동기 저장의 "응답 없음" 인상 제거 — `_commit_save`가 저장 직전 `setOverrideCursor(WaitCursor)` + 상태바 `status.saving` + `processEvents()`(페인트 후 블로킹), `finally: restoreOverrideCursor()`로 영구 커서 누수 방지. async-save 착수 전 측정(대부분 저장 <1s, tobytes 직렬화는 비동기화해도 메인 잔존, 풀 워커는 최고 위험)에 근거해 **풀 async-save 대신 경량 안**을 사용자가 선택. 가짜 진행률(%)은 배제(r7 교훈). 저장 UI 경로 첫 테스트(커서 복원 성공/실패/취소). 풀 async-save는 `source_bytes` 발판 위에서 보류. 271 tests pass.

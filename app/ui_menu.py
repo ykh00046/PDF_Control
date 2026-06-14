@@ -136,6 +136,11 @@ class MenuBuilder:
         remove_section_action.triggered.connect(win.open_remove_section_dialog)
         tools_menu.addAction(remove_section_action)
 
+        watermark_action = QAction(tr("menu.tools.watermark"), win)
+        watermark_action.setShortcut("Ctrl+Shift+W")
+        watermark_action.triggered.connect(win.open_watermark_dialog)
+        tools_menu.addAction(watermark_action)
+
         tools_menu.addSeparator()
 
         page_manager_action = QAction(tr("menu.tools.page_manager"), win)

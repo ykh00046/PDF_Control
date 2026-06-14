@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Added text watermarks: Tools → "Add Watermark..." (Ctrl+Shift+W) overlays semi-transparent, diagonal text (e.g. "CONFIDENTIAL", "DRAFT") on the current page or every page, with adjustable text, size, color, opacity, and angle.
 - Improved: saving now shows a wait cursor and a "Saving..." status so a large document's save no longer looks like the app has frozen.
 - Fixed (data loss): page changes — deleting, rotating, moving, duplicating, merging, or reordering pages — were silently discarded when you saved (the save re-read the original file and applied only text edits). Saving now writes the document exactly as you see it, with both page changes and text edits. Encrypted save/decrypt is unaffected.
 - Improved: text replacement now keeps the original typeface even when that font is NOT installed on your system — the font embedded in the PDF itself is reused for the replacement. (Subset-embedded fonts, which only contain the glyphs the document already used, safely fall back to a standard font.)

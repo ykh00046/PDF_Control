@@ -1,6 +1,6 @@
 from PySide6.QtCore import QObject, Signal
-from typing import Any, Callable, List, Optional
-from app.model import DocumentSession, Operation
+from typing import Any, Callable, List, Optional, Sequence, Tuple
+from app.model import DocumentSession, Operation, WatermarkText
 from app.encryption import EncryptedPDFError
 from app.logger import get_logger
 
@@ -206,6 +206,29 @@ class EditorController(QObject):
         def run(s: DocumentSession) -> None:
             s.export_text(output_path, page_indices, fmt)  # int result discarded: 0 chars is still success
         return bool(self._run_session_action("export text", run, applied=False))
+
+    def add_watermark(
+        self,
+        page_indices: Sequence[int],
+        text: str,
+        fontsize: float = 40.0,
+        color: Tuple[float, float, float] = (0.5, 0.5, 0.5),
+        opacity: float = 0.3,
+        angle: float = 45.0,
+    ) -> bool:
+        """Add a text watermark to each page in ``page_indices``.
+
+        The caller (UI handler) decides the scope — a single current page or
+        every page — keeping the controller Qt/view free. One ``WatermarkText``
+        op is added per page (same pattern as batch replace); the guard emits a
+        single ``operation_applied`` so the preview re-renders once.
+        """
+        def run(s: DocumentSession) -> None:
+            for i in page_indices:
+                s.add_operation(
+                    WatermarkText(i, text, fontsize, color, opacity, angle)
+                )
+        return bool(self._run_session_action("add watermark", run))
 
     def _on_history_changed(self):
         """Relay session history changed signal."""

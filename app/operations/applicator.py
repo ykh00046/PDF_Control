@@ -38,6 +38,7 @@ from app.operations.redact import RedactDelete, RedactReplace
 from app.operations.remove_section import RemoveSectionAsImage
 from app.operations.types import ApplyMode, TextMetadata
 from app.operations.warnings import ApplyResult, OpWarning
+from app.operations.watermark import WatermarkText
 from app.text_metadata import _extract_text_metadata
 
 
@@ -185,6 +186,13 @@ class OperationApplicator:
         # viewer renders against a detached temporary single-page document.
         if operations:
             self._apply_section_removal(page, operations)
+
+        # Pass 5: Watermark overlay -- LAST, so it sits on top of everything
+        # (including a section-removal raster). Non-destructive, so SAVE and
+        # PREVIEW share this pass with no mode branch.
+        for op in operations:
+            if isinstance(op, WatermarkText):
+                op.apply(page)
 
         # Collect warnings (counts are derived via properties)
         result.warnings = warnings

@@ -14,6 +14,7 @@ from app.operations.base import Operation
 from app.operations.crop import CropMargins
 from app.operations.redact import RedactDelete, RedactReplace
 from app.operations.remove_section import RemoveSectionAsImage
+from app.operations.watermark import WatermarkText
 
 
 def _round_trip(op: Operation) -> None:
@@ -60,3 +61,27 @@ def test_crop_margins_round_trip():
 
 def test_remove_section_round_trip():
     _round_trip(RemoveSectionAsImage(3, fitz.Rect(50, 50, 300, 200), 150, "png"))
+
+
+def test_watermark_round_trip():
+    op = WatermarkText(
+        2, "CONFIDENTIAL", fontsize=48.0,
+        color=(0.4, 0.4, 0.4), opacity=0.25, angle=30.0,
+    )
+    _round_trip(op)
+    restored = Operation.from_dict(op.to_dict())
+    assert restored.text == "CONFIDENTIAL"
+    assert restored.color == (0.4, 0.4, 0.4)
+    assert restored.opacity == 0.25
+    assert restored.angle == 30.0
+
+
+def test_watermark_legacy_payload_uses_defaults():
+    """Only 'text' is mandatory; missing optional keys fall back to defaults."""
+    restored = Operation.from_dict({
+        "type": "WatermarkText", "page_index": 0, "rects": [], "text": "DRAFT",
+    })
+    assert restored.fontsize == 40.0
+    assert restored.color == (0.5, 0.5, 0.5)
+    assert restored.opacity == 0.3
+    assert restored.angle == 45.0

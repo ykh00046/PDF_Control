@@ -42,6 +42,7 @@ class Operation(ABC):
         from app.operations.crop import CropMargins
         from app.operations.redact import RedactDelete, RedactReplace
         from app.operations.remove_section import RemoveSectionAsImage
+        from app.operations.watermark import WatermarkText
 
         op_type = data["type"]
         page_index = data["page_index"]
@@ -74,6 +75,16 @@ class Operation(ABC):
                 remove_rect,
                 data.get("dpi", DEFAULT_REMOVE_SECTION_DPI),
                 data.get("format", DEFAULT_REMOVE_SECTION_FORMAT)
+            )
+        elif op_type == "WatermarkText":
+            wm_color = data.get("color")
+            return WatermarkText(
+                page_index,
+                data["text"],
+                data.get("fontsize", 40.0),
+                tuple(wm_color) if wm_color else (0.5, 0.5, 0.5),
+                data.get("opacity", 0.3),
+                data.get("angle", 45.0),
             )
         else:
             raise ValueError(f"Unknown operation type: {op_type}")
