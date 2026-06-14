@@ -4,6 +4,7 @@ Exposes :class:`DialogHandlerMixin` which opens child dialogs (batch
 replace, crop, remove section, page manager, log viewer, help) and applies
 their confirmed results back to the controller.
 """
+
 from __future__ import annotations
 
 import os
@@ -37,9 +38,7 @@ class DialogHandlerMixin:
     def open_batch_replace_dialog(self: "MainWindow") -> None:  # type: ignore[misc]
         if not self.controller.session:
             self.statusBar().showMessage(tr("status.no_document_batch"))
-            self.logger.warning(
-                "Attempted batch replace with no document loaded."
-            )
+            self.logger.warning("Attempted batch replace with no document loaded.")
             return
 
         dialog = BatchReplaceDialog(self.controller.session, self)
@@ -50,9 +49,7 @@ class DialogHandlerMixin:
         self: "MainWindow", replacements: List[Dict[str, Any]]
     ) -> None:
         if not self.controller.session:
-            self.logger.error(
-                "Attempted to process batch replacements with no document session."
-            )
+            self.logger.error("Attempted to process batch replacements with no document session.")
             return
 
         num_replaced = 0
@@ -123,9 +120,7 @@ class DialogHandlerMixin:
         self.last_selected_rect = None
         self.viewer.clear_selection()
         self.statusBar().showMessage(tr("status.crop_applied"))
-        self.logger.info(
-            f"User applied crop to page {page_index}: {crop_settings}"
-        )
+        self.logger.info(f"User applied crop to page {page_index}: {crop_settings}")
 
     # --- Remove section -------------------------------------------------
     def open_remove_section_dialog(self: "MainWindow") -> None:  # type: ignore[misc]
@@ -143,15 +138,11 @@ class DialogHandlerMixin:
         # 회전 페이지 감지
         if page.rotation != 0:
             QMessageBox.warning(self, tr("dialog.error"), tr("error.rotated_page"))
-            self.logger.warning(
-                f"Attempted remove section on rotated page (rotation={page.rotation})"
-            )
+            self.logger.warning(f"Attempted remove section on rotated page (rotation={page.rotation})")
             return
 
         dialog = RemoveSectionDialog(page, self.last_selected_rect, self)
-        dialog.remove_confirmed.connect(
-            lambda settings: self.apply_remove_section(settings)
-        )
+        dialog.remove_confirmed.connect(lambda settings: self.apply_remove_section(settings))
         dialog.exec()
 
     def apply_remove_section(  # type: ignore[misc]
@@ -174,15 +165,10 @@ class DialogHandlerMixin:
         # Use refined rect from dialog if available.
         final_rect = settings.get("rect", self.last_selected_rect)
 
-        self.logger.info(
-            f"Applying section removal: page={page_index}, rect={final_rect}, "
-            f"dpi={dpi}, fmt={fmt}"
-        )
+        self.logger.info(f"Applying section removal: page={page_index}, rect={final_rect}, dpi={dpi}, fmt={fmt}")
 
         try:
-            operation = RemoveSectionAsImage(
-                page_index, final_rect, dpi=dpi, format=fmt
-            )
+            operation = RemoveSectionAsImage(page_index, final_rect, dpi=dpi, format=fmt)
 
             if not self.controller.add_operation(operation):
                 return
@@ -191,15 +177,12 @@ class DialogHandlerMixin:
             self.viewer.clear_selection()
             self.statusBar().showMessage(tr("status.remove_applied"))
             self.logger.info(
-                f"User applied remove section to page {page_index}: "
-                f"DPI={settings['dpi']}, format={settings['format']}"
+                f"User applied remove section to page {page_index}: DPI={settings['dpi']}, format={settings['format']}"
             )
 
         except Exception as e:
             self.logger.error(f"Failed to remove section: {e}")
-            QMessageBox.critical(
-                self, tr("dialog.error"), tr("error.remove_failed", str(e))
-            )
+            QMessageBox.critical(self, tr("dialog.error"), tr("error.remove_failed", str(e)))
 
     # --- Watermark ------------------------------------------------------
     def open_watermark_dialog(self: "MainWindow") -> None:  # type: ignore[misc]
@@ -235,13 +218,8 @@ class DialogHandlerMixin:
             angle=settings["angle"],
         )
         if applied:
-            self.statusBar().showMessage(
-                tr("status.watermark_applied", len(page_indices))
-            )
-            self.logger.info(
-                f"Applied watermark to {len(page_indices)} page(s): "
-                f"{settings['text']!r}"
-            )
+            self.statusBar().showMessage(tr("status.watermark_applied", len(page_indices)))
+            self.logger.info(f"Applied watermark to {len(page_indices)} page(s): {settings['text']!r}")
 
     # --- Image watermark ------------------------------------------------
     def open_image_watermark_dialog(self: "MainWindow") -> None:  # type: ignore[misc]
@@ -276,12 +254,8 @@ class DialogHandlerMixin:
             rotate=settings["rotate"],
         )
         if applied:
-            self.statusBar().showMessage(
-                tr("status.image_watermark_applied", len(page_indices))
-            )
-            self.logger.info(
-                f"Applied image watermark to {len(page_indices)} page(s)"
-            )
+            self.statusBar().showMessage(tr("status.image_watermark_applied", len(page_indices)))
+            self.logger.info(f"Applied image watermark to {len(page_indices)} page(s)")
 
     # --- Page manager ---------------------------------------------------
     def open_page_manager_dialog(self: "MainWindow") -> None:  # type: ignore[misc]
@@ -342,9 +316,7 @@ class DialogHandlerMixin:
                 )
             except ValueError as e:
                 self.logger.warning(f"Invalid export range: {e}")
-                QMessageBox.warning(
-                    self, tr("dialog.error"), tr("text_export.range.invalid")
-                )
+                QMessageBox.warning(self, tr("dialog.error"), tr("text_export.range.invalid"))
                 return
             # Flatten groups; resolve_indices (downstream) sorts + dedupes.
             page_indices = [i for group in groups for i in group]
@@ -359,12 +331,8 @@ class DialogHandlerMixin:
             ext = ".txt"
 
         base = self.controller.session.file_path
-        suggested = (
-            base.rsplit(".", 1)[0] + ext if base else "untitled" + ext
-        )
-        output_path, _ = QFileDialog.getSaveFileName(
-            self, tr("text_export.dialog_title"), suggested, file_filter
-        )
+        suggested = base.rsplit(".", 1)[0] + ext if base else "untitled" + ext
+        output_path, _ = QFileDialog.getSaveFileName(self, tr("text_export.dialog_title"), suggested, file_filter)
         if not output_path:
             self.statusBar().showMessage(tr("status.ready"))
             return
@@ -375,9 +343,7 @@ class DialogHandlerMixin:
             self.statusBar().showMessage(tr("text_export.success", output_path))
             self.logger.info(f"Exported text to {output_path} ({fmt})")
         else:
-            QMessageBox.critical(
-                self, tr("dialog.error"), tr("error.export_failed", output_path)
-            )
+            QMessageBox.critical(self, tr("dialog.error"), tr("error.export_failed", output_path))
 
     # --- View logs ------------------------------------------------------
     def view_logs(self: "MainWindow") -> None:  # type: ignore[misc]
@@ -405,9 +371,7 @@ class DialogHandlerMixin:
             msg.setIcon(QMessageBox.Warning)
             msg.setWindowTitle(tr("dialog.error"))
             msg.setText(tr("error.open_log", e))
-            copy_btn = msg.addButton(
-                tr("dialog.log_copy"), QMessageBox.ActionRole
-            )
+            copy_btn = msg.addButton(tr("dialog.log_copy"), QMessageBox.ActionRole)
             msg.addButton(QMessageBox.Ok)
             msg.exec()
             if msg.clickedButton() == copy_btn:

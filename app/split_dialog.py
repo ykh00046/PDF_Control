@@ -6,6 +6,7 @@ settings — group computation and file writing are handled by the caller via
 :func:`app.page_split.compute_split_groups` and ``controller.split_document``,
 mirroring the crop / text-export dialog convention.
 """
+
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
@@ -91,9 +92,7 @@ class SplitDialog(QDialog):
 
         layout.addLayout(form)
 
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self
-        )
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
         buttons.button(QDialogButtonBox.Ok).setText(tr("split.ok"))
         buttons.button(QDialogButtonBox.Cancel).setText(tr("split.cancel"))
         buttons.accepted.connect(self.accept)
@@ -101,9 +100,7 @@ class SplitDialog(QDialog):
         layout.addWidget(buttons)
 
     def _choose_directory(self) -> None:
-        directory = QFileDialog.getExistingDirectory(
-            self, tr("split.output_dir.label"), self.output_edit.text()
-        )
+        directory = QFileDialog.getExistingDirectory(self, tr("split.output_dir.label"), self.output_edit.text())
         if directory:
             self.output_edit.setText(directory)
 

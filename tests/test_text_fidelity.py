@@ -5,6 +5,7 @@ matching), size (no rect-based inflation), and vertical position
 (baseline anchoring). Uses Arial from the Windows font directory; tests
 are skipped where it is unavailable (non-Windows CI).
 """
+
 import os
 
 import fitz
@@ -16,13 +17,9 @@ from app.operations import ApplyMode, OperationApplicator
 from app.operations.redact import RedactReplace
 from app.text_metadata import _extract_text_metadata
 
-ARIAL_PATH = os.path.join(
-    os.environ.get("SystemRoot", "C:\\Windows"), "Fonts", "arial.ttf"
-)
+ARIAL_PATH = os.path.join(os.environ.get("SystemRoot", "C:\\Windows"), "Fonts", "arial.ttf")
 
-requires_arial = pytest.mark.skipif(
-    not os.path.exists(ARIAL_PATH), reason="Arial font file not available"
-)
+requires_arial = pytest.mark.skipif(not os.path.exists(ARIAL_PATH), reason="Arial font file not available")
 
 ORIGINAL_TEXT = "Original sample text"
 
@@ -33,8 +30,11 @@ def _make_arial_pdf(tmp_path, fontsize=10.0):
     doc = fitz.open()
     page = doc.new_page(width=595, height=842)
     page.insert_text(
-        (72, 200), ORIGINAL_TEXT,
-        fontsize=fontsize, fontname="srcfont", fontfile=ARIAL_PATH,
+        (72, 200),
+        ORIGINAL_TEXT,
+        fontsize=fontsize,
+        fontname="srcfont",
+        fontfile=ARIAL_PATH,
     )
     rects = page.search_for(ORIGINAL_TEXT)
     assert rects, "source text not found after insertion"
@@ -75,6 +75,7 @@ def _apply_replace(tmp_path, src_path, rect, new_text, **op_kwargs):
 
 # ── M1: system-font matching ─────────────────────────────────────────
 
+
 @requires_arial
 def test_replace_uses_matched_system_font(tmp_path):
     """Without any explicit font choice the replacement stays in Arial."""
@@ -92,9 +93,7 @@ def test_batch_style_op_gets_matched_font(tmp_path):
     """Batch-created ops carry fontname='helv'; the extracted metadata must
     still drive the match (regression net for the helv-always batch bug)."""
     src, rect, _meta = _make_arial_pdf(tmp_path)
-    out, _ = _apply_replace(
-        tmp_path, src, rect, "Batch replaced", fontname="helv", fontsize=0
-    )
+    out, _ = _apply_replace(tmp_path, src, rect, "Batch replaced", fontname="helv", fontsize=0)
 
     spans = _replaced_spans(out, "Batch")
     assert spans
@@ -126,6 +125,7 @@ def test_uncovered_match_is_not_embedded_end_to_end(tmp_path):
 
 # ── M2: baseline anchoring ───────────────────────────────────────────
 
+
 @requires_arial
 def test_replace_preserves_baseline(tmp_path):
     src, rect, meta = _make_arial_pdf(tmp_path)
@@ -141,6 +141,7 @@ def test_replace_preserves_baseline(tmp_path):
 
 
 # ── M3: fontsize must not be inflated by a large selection rect ─────
+
 
 @requires_arial
 def test_extracted_fontsize_not_inflated_by_large_rect(tmp_path):
@@ -166,6 +167,7 @@ def test_rect_fallback_when_no_text(tmp_path):
 
 
 # ── embedded font reuse (embedded-font-reuse PDCA) ───────────────────
+
 
 def _reopen(src_path):
     return fitz.open(str(src_path))
@@ -231,9 +233,7 @@ def test_embedded_font_subset_rejected(tmp_path):
 def test_replace_reuses_embedded_when_not_installed(tmp_path, monkeypatch):
     """With the system match disabled (simulating a not-installed source
     font), the replacement must reuse the PDF's own embedded font."""
-    monkeypatch.setattr(
-        applicator_module, "resolve_pdf_fontname", lambda *a, **k: None
-    )
+    monkeypatch.setattr(applicator_module, "resolve_pdf_fontname", lambda *a, **k: None)
     src, rect, meta = _make_arial_pdf(tmp_path)
     out, _ = _apply_replace(tmp_path, src, rect, "Replaced words")
 
@@ -249,9 +249,7 @@ def test_embedded_aliases_do_not_collide(tmp_path, monkeypatch):
     """Two different embedded fonts replaced in one pass must not share an
     alias (content-derived alias prevents the second op reusing the first
     font's program)."""
-    times_path = os.path.join(
-        os.environ.get("SystemRoot", "C:\\Windows"), "Fonts", "times.ttf"
-    )
+    times_path = os.path.join(os.environ.get("SystemRoot", "C:\\Windows"), "Fonts", "times.ttf")
     if not os.path.exists(times_path):
         pytest.skip("Times New Roman not available")
 
@@ -259,18 +257,14 @@ def test_embedded_aliases_do_not_collide(tmp_path, monkeypatch):
     src = tmp_path / "two_fonts.pdf"
     doc = fitz.open()
     page = doc.new_page(width=595, height=842)
-    page.insert_text((72, 200), "Arial line here", fontsize=10.0,
-                     fontname="af", fontfile=ARIAL_PATH)
-    page.insert_text((72, 300), "Times line here", fontsize=10.0,
-                     fontname="tf", fontfile=times_path)
+    page.insert_text((72, 200), "Arial line here", fontsize=10.0, fontname="af", fontfile=ARIAL_PATH)
+    page.insert_text((72, 300), "Times line here", fontsize=10.0, fontname="tf", fontfile=times_path)
     rA = page.search_for("Arial line here")[0]
     rT = page.search_for("Times line here")[0]
     doc.save(str(src))
     doc.close()
 
-    monkeypatch.setattr(
-        applicator_module, "resolve_pdf_fontname", lambda *a, **k: None
-    )
+    monkeypatch.setattr(applicator_module, "resolve_pdf_fontname", lambda *a, **k: None)
     doc = fitz.open(str(src))
     page = doc[0]
     ops = [
@@ -293,9 +287,7 @@ def test_embedded_aliases_do_not_collide(tmp_path, monkeypatch):
 @requires_arial
 def test_subset_source_falls_back_safely(tmp_path, monkeypatch):
     """Subset source + no system match: no crash, Base-14 fallback used."""
-    monkeypatch.setattr(
-        applicator_module, "resolve_pdf_fontname", lambda *a, **k: None
-    )
+    monkeypatch.setattr(applicator_module, "resolve_pdf_fontname", lambda *a, **k: None)
     src, rect, _meta = _make_arial_pdf(tmp_path)
     sub = _subset_copy(tmp_path, src)
     out, result = _apply_replace(tmp_path, sub, rect, "Plain fallback")

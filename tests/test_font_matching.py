@@ -1,4 +1,5 @@
 """Unit tests for PDF-font-name -> system-font matching (text-fidelity PDCA)."""
+
 import pytest
 
 import app.fonts as fonts
@@ -6,6 +7,7 @@ from app.config import FONT_FLAG_BOLD, FONT_FLAG_ITALIC
 from app.fonts import _font_name_candidates, resolve_pdf_fontname
 
 # ── candidate generation (pure) ──────────────────────────────────────
+
 
 def test_subset_prefix_is_stripped():
     candidates = _font_name_candidates("ABCDEF+Calibri-Bold")
@@ -47,6 +49,7 @@ def test_empty_name_yields_no_candidates():
 
 # ── resolve with injected cache ──────────────────────────────────────
 
+
 @pytest.fixture
 def fake_font_cache(tmp_path, monkeypatch):
     """Point the registry cache at temp files so resolution is hermetic."""
@@ -76,9 +79,7 @@ def test_resolve_unknown_returns_none(fake_font_cache):
 
 
 def test_resolve_missing_file_is_skipped(tmp_path, monkeypatch):
-    monkeypatch.setattr(
-        fonts, "_font_cache", {"ghost": str(tmp_path / "missing.ttf")}
-    )
+    monkeypatch.setattr(fonts, "_font_cache", {"ghost": str(tmp_path / "missing.ttf")})
     assert resolve_pdf_fontname("Ghost") is None
 
 

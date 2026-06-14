@@ -1,4 +1,5 @@
 """Tests for PDF encryption / password protection (pdf-encryption PDCA)."""
+
 import fitz
 
 from app.config import (
@@ -16,6 +17,7 @@ from app.encryption import (
 from app.pdf_engine import save_document_copy
 
 # ── Policy: is_active ───────────────────────────────────────────────
+
 
 def test_default_settings_inactive():
     """No passwords + all permissions allowed ⇒ inactive (plain save)."""
@@ -39,6 +41,7 @@ def test_restriction_only_activates():
 
 
 # ── Policy: save_kwargs / permission math ───────────────────────────
+
 
 def test_save_kwargs_shape():
     settings = EncryptionSettings(user_password="u", owner_password="o")
@@ -77,11 +80,10 @@ def test_config_defaults_all_allowed():
 
 # ── Round-trip via save_document_copy ───────────────────────────────
 
+
 def test_user_password_round_trip(simple_pdf, tmp_path):
     out = str(tmp_path / "protected.pdf")
-    save_document_copy(
-        simple_pdf, out, [], encryption=EncryptionSettings(user_password="open123")
-    )
+    save_document_copy(simple_pdf, out, [], encryption=EncryptionSettings(user_password="open123"))
     doc = fitz.open(out)
     assert doc.needs_pass  # int flag (1) on an encrypted file
     assert doc.authenticate("wrong") == 0
@@ -92,7 +94,9 @@ def test_user_password_round_trip(simple_pdf, tmp_path):
 def test_deny_copy_round_trip(simple_pdf, tmp_path):
     out = str(tmp_path / "nocopy.pdf")
     save_document_copy(
-        simple_pdf, out, [],
+        simple_pdf,
+        out,
+        [],
         encryption=EncryptionSettings(owner_password="admin", allow_copy=False),
     )
     # Open as a regular reader (no owner auth): with only an owner password the
@@ -121,6 +125,7 @@ def test_no_encryption_arg_is_backward_compatible(simple_pdf, tmp_path):
 
 
 # ── Session integration: re-bind after encrypted save ───────────────
+
 
 def test_session_reopens_after_encrypted_save(simple_pdf, tmp_path):
     """After saving encrypted, the live session must stay readable."""

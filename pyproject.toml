@@ -9,6 +9,10 @@ requires-python = ">=3.13"
 line-length = 120
 target-version = "py313"
 
+[tool.ruff.format]
+# Defaults made explicit: double quotes, space indentation; wrapping follows
+# the line-length above. format is token-preserving (no behavior change).
+
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
 

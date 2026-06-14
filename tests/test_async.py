@@ -1,4 +1,3 @@
-
 import fitz
 import pytest
 
@@ -10,6 +9,7 @@ def main_window(qtbot):
     window = MainWindow()
     qtbot.addWidget(window)
     return window
+
 
 def test_async_rendering_and_cache(main_window, qtbot, tmp_path):
     """Verify async rendering works and cache is utilized."""
@@ -48,7 +48,7 @@ def test_async_rendering_and_cache(main_window, qtbot, tmp_path):
     main_window.viewer.scene.clear()
 
     qtbot.waitUntil(check_render_complete, timeout=5000)
-    assert len(main_window.viewer.image_cache) == 2 # New zoom level cached
+    assert len(main_window.viewer.image_cache) == 2  # New zoom level cached
     print("Zoom render complete and cached.")
 
     # Zoom back to original -> should hit cache
@@ -56,9 +56,8 @@ def test_async_rendering_and_cache(main_window, qtbot, tmp_path):
     # Or check logs?
     # For now, just ensure it renders correctly.
     main_window.viewer.zoom_out()
-    qtbot.waitUntil(check_render_complete, timeout=1000) # Should be fast
+    qtbot.waitUntil(check_render_complete, timeout=1000)  # Should be fast
 
     # Cache size should remain 2 (original 1.0 and zoomed 1.2)
     assert len(main_window.viewer.image_cache) == 2
     print("Cache hit verified (size did not increase).")
-

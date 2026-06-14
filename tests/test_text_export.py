@@ -1,4 +1,5 @@
 """Tests for text export (extract_text / export_text)."""
+
 import fitz
 import pytest
 

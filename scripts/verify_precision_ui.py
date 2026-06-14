@@ -1,4 +1,3 @@
-
 import sys
 from pathlib import Path
 
@@ -20,7 +19,7 @@ def test_precision_rect_passing():
     # 1. 가상 데이터 준비
     doc = fitz.open()
     page = doc.new_page()
-    initial_rect = fitz.Rect(0, 100, 595, 200) # 초기 드래그 영역
+    initial_rect = fitz.Rect(0, 100, 595, 200)  # 초기 드래그 영역
 
     # 2. 다이얼로그 생성 및 수치 변경 시뮬레이션
     print(f"1. 초기 영역 {initial_rect}으로 다이얼로그 생성...")
@@ -34,12 +33,13 @@ def test_precision_rect_passing():
     # 3. 시그널을 통해 전달되는 데이터 검증
     print("3. 전달 데이터 검증 중...")
     captured_data = {}
+
     def on_confirmed(data):
         nonlocal captured_data
         captured_data = data
 
     dialog.remove_confirmed.connect(on_confirmed)
-    dialog.apply_remove() # 적용 버튼 클릭 시뮬레이션
+    dialog.apply_remove()  # 적용 버튼 클릭 시뮬레이션
 
     # 최종 rect 검증
     final_rect = captured_data.get("rect")
@@ -51,6 +51,7 @@ def test_precision_rect_passing():
 
     print("\n✅ 3번 편집 정밀도 UI 강화 로직 검증 성공!")
     doc.close()
+
 
 if __name__ == "__main__":
     try:

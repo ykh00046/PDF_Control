@@ -1,4 +1,3 @@
-
 import fitz
 import pytest
 
@@ -30,6 +29,7 @@ def sample_pdf_with_sections(tmp_path):
 
     return pdf_path
 
+
 def test_remove_middle_section(sample_pdf_with_sections, tmp_path):
     """중간 영역 제거 테스트"""
     output_path = tmp_path / "output_removed.pdf"
@@ -54,8 +54,9 @@ def test_remove_middle_section(sample_pdf_with_sections, tmp_path):
 
         # 페이지 높이가 200pt 줄어들었는지 확인
         expected_height = original_height - 200
-        assert abs(result_page.rect.height - expected_height) < 5, \
+        assert abs(result_page.rect.height - expected_height) < 5, (
             f"Expected height {expected_height}, got {result_page.rect.height}"
+        )
 
         # 텍스트 확인 (전체가 이미지화되어 get_text()는 빈 문자열)
         text = result_page.get_text()
@@ -72,6 +73,7 @@ def test_remove_middle_section(sample_pdf_with_sections, tmp_path):
             session.close()
         if result_doc:
             result_doc.close()
+
 
 def test_remove_top_section(sample_pdf_with_sections, tmp_path):
     """상단 영역 제거 테스트 (하단만 남음)"""
@@ -111,6 +113,7 @@ def test_remove_top_section(sample_pdf_with_sections, tmp_path):
         if result_doc:
             result_doc.close()
 
+
 def test_remove_bottom_section(sample_pdf_with_sections, tmp_path):
     """하단 영역 제거 테스트 (상단만 남음)"""
     output_path = tmp_path / "output_bottom_removed.pdf"
@@ -149,6 +152,7 @@ def test_remove_bottom_section(sample_pdf_with_sections, tmp_path):
         if result_doc:
             result_doc.close()
 
+
 def test_remove_entire_page_fails(sample_pdf_with_sections, tmp_path):
     """전체 페이지 제거 시도는 실패해야 함"""
     output_path = tmp_path / "output_fail.pdf"
@@ -173,6 +177,7 @@ def test_remove_entire_page_fails(sample_pdf_with_sections, tmp_path):
     finally:
         if session:
             session.close()
+
 
 def test_jpeg_vs_png_format(sample_pdf_with_sections, tmp_path):
     """JPEG와 PNG 포맷 비교 테스트"""

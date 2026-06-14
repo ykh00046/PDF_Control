@@ -23,7 +23,7 @@ class RemoveSectionDialog(QDialog):
     def __init__(self, page: fitz.Page, selected_rect: fitz.Rect, parent=None):
         super().__init__(parent)
         self.page = page
-        self.selected_rect = fitz.Rect(selected_rect) # Copy
+        self.selected_rect = fitz.Rect(selected_rect)  # Copy
         self.page_rect = page.rect
 
         self.init_ui()
@@ -39,8 +39,7 @@ class RemoveSectionDialog(QDialog):
         warning_label = QLabel(f"<h3>⚠️ {tr('remove.warning.title')}</h3><p>{tr('remove.warning.message')}</p>")
         warning_label.setWordWrap(True)
         warning_label.setStyleSheet(
-            "background-color: #fff3cd; color: #664d03; padding: 10px; "
-            "border: 1px solid #ffc107; border-radius: 4px;"
+            "background-color: #fff3cd; color: #664d03; padding: 10px; border: 1px solid #ffc107; border-radius: 4px;"
         )
         layout.addWidget(warning_label)
 
@@ -92,8 +91,7 @@ class RemoveSectionDialog(QDialog):
         self.info_label = QLabel()
         self.info_label.setWordWrap(True)
         self.info_label.setStyleSheet(
-            "padding: 10px; border: 1px solid #ccc; border-radius: 4px; "
-            "background-color: #f8f9fa; color: #1a1a1a;"
+            "padding: 10px; border: 1px solid #ccc; border-radius: 4px; background-color: #f8f9fa; color: #1a1a1a;"
         )
         layout.addWidget(self.info_label)
         self._update_info_label()
@@ -166,9 +164,11 @@ class RemoveSectionDialog(QDialog):
         dpi = int(self.dpi_combo.currentText())
         format_type = self.format_combo.currentData()
 
-        self.remove_confirmed.emit({
-            "dpi": dpi,
-            "format": format_type,
-            "rect": self.selected_rect # Pass the modified rect
-        })
+        self.remove_confirmed.emit(
+            {
+                "dpi": dpi,
+                "format": format_type,
+                "rect": self.selected_rect,  # Pass the modified rect
+            }
+        )
         self.accept()

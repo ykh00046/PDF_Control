@@ -230,11 +230,7 @@ class PageManagerDialog(QDialog):
 
         # Don't allow deleting all pages
         if len(selected) >= session.doc.page_count:
-            QMessageBox.warning(
-                self,
-                tr("page_manager.error.title"),
-                tr("page_manager.error.delete_all")
-            )
+            QMessageBox.warning(self, tr("page_manager.error.title"), tr("page_manager.error.delete_all"))
             return
 
         # Confirmation
@@ -244,7 +240,7 @@ class PageManagerDialog(QDialog):
             tr("page_manager.confirm_delete.title"),
             tr("page_manager.confirm_delete.message", ", ".join(page_nums)),
             QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            QMessageBox.No,
         )
 
         if reply != QMessageBox.Yes:

@@ -6,6 +6,7 @@ chosen settings. The actual file-save dialog and writing are handled by the
 caller (``DialogHandlerMixin.apply_text_export``), mirroring the crop/remove
 dialog convention.
 """
+
 from __future__ import annotations
 
 from PySide6.QtCore import Signal
@@ -76,9 +77,7 @@ class TextExportDialog(QDialog):
 
         layout.addLayout(form)
 
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self
-        )
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
         buttons.button(QDialogButtonBox.Ok).setText(tr("text_export.button.export"))
         buttons.button(QDialogButtonBox.Cancel).setText(tr("text_export.button.cancel"))
         buttons.accepted.connect(self._on_accept)

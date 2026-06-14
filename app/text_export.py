@@ -6,6 +6,7 @@ Keeping the logic free of Qt makes it fully unit-testable and deterministic.
 
 The source document is never modified — extraction is read-only.
 """
+
 from __future__ import annotations
 
 import os
@@ -20,9 +21,7 @@ MD = "md"
 SUPPORTED_FORMATS = (TXT, MD)
 
 
-def resolve_indices(
-    page_indices: Optional[Sequence[int]], page_count: int
-) -> List[int]:
+def resolve_indices(page_indices: Optional[Sequence[int]], page_count: int) -> List[int]:
     """Return sorted, de-duplicated 0-based indices; ``None`` means every page.
 
     Raises:
@@ -114,7 +113,5 @@ def export_text_to_file(
     with open(output_path, "w", encoding="utf-8", newline="\n") as f:
         f.write(content)
 
-    get_logger().info(
-        f"Exported text to {output_path} (fmt={fmt}, {len(content)} chars)"
-    )
+    get_logger().info(f"Exported text to {output_path} (fmt={fmt}, {len(content)} chars)")
     return len(content)

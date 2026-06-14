@@ -60,6 +60,7 @@ def test_basic_refactoring():
         if test_pdf.exists():
             test_pdf.unlink()
 
+
 def test_applicator_directly():
     """Test OperationApplicator service directly."""
 
@@ -102,6 +103,7 @@ def test_applicator_directly():
     finally:
         if test_pdf.exists():
             test_pdf.unlink()
+
 
 if __name__ == "__main__":
     print("Testing refactored code...")

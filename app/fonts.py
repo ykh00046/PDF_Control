@@ -14,8 +14,22 @@ logger = get_logger()
 _SUBSET_PREFIX_RE = re.compile(r"^[A-Z]{6}\+")
 # Style/weight tokens stripped to recover the bare family name.
 _STYLE_TOKENS = {
-    "bold", "italic", "oblique", "regular", "light", "medium", "semibold",
-    "black", "thin", "extrabold", "heavy", "book", "roman", "mt", "ps", "psmt",
+    "bold",
+    "italic",
+    "oblique",
+    "regular",
+    "light",
+    "medium",
+    "semibold",
+    "black",
+    "thin",
+    "extrabold",
+    "heavy",
+    "book",
+    "roman",
+    "mt",
+    "ps",
+    "psmt",
 }
 
 # Conditional import for cross-platform compatibility
@@ -26,6 +40,7 @@ else:
 
 # Cache for font paths to avoid repeated registry scans
 _font_cache: Optional[Dict[str, str]] = None
+
 
 def _populate_font_cache() -> None:
     """
@@ -80,6 +95,7 @@ def get_font_path_by_name(font_name: str) -> Optional[str]:
     cache = _font_cache if _font_cache is not None else {}
     # Perform a case-insensitive search
     return cache.get(font_name.lower())
+
 
 def _font_name_candidates(pdf_fontname: str, font_flags: int = 0) -> List[str]:
     """Build lowercase registry-lookup candidates for an extracted PDF font name.
@@ -140,9 +156,7 @@ def _font_file_covers(fontfile: str, text: str) -> bool:
     return bool(_font_covers(font, text))
 
 
-def extract_embedded_font(
-    page: fitz.Page, source_fontname: str, must_cover: str = ""
-) -> Optional[bytes]:
+def extract_embedded_font(page: fitz.Page, source_fontname: str, must_cover: str = "") -> Optional[bytes]:
     """Extract the embedded font program matching ``source_fontname``.
 
     Matching: the extracted span font name and each page-font's basefont are
@@ -169,9 +183,7 @@ def extract_embedded_font(
     for entry in page.get_fonts(full=True):
         # entry: (xref, ext, type, basefont, name, encoding, ...)
         base_candidates = set(_font_name_candidates(str(entry[3])))
-        shared = [
-            i for i, c in enumerate(src_candidates) if c in base_candidates
-        ]
+        shared = [i for i, c in enumerate(src_candidates) if c in base_candidates]
         if not shared:
             continue
         specificity = shared[0]
@@ -187,26 +199,19 @@ def extract_embedded_font(
             font = fitz.Font(fontbuffer=buffer)
         except Exception as exc:
             # FzError* hierarchy -- unusable program, skip this entry.
-            logger.debug(
-                f"Embedded font xref={entry[0]} unusable: {exc}"
-            )
+            logger.debug(f"Embedded font xref={entry[0]} unusable: {exc}")
             continue
         if not _font_covers(font, must_cover):
             continue
 
-        logger.debug(
-            f"Reusing embedded font xref={entry[0]} basefont='{entry[3]}' "
-            f"for '{source_fontname}'"
-        )
+        logger.debug(f"Reusing embedded font xref={entry[0]} basefont='{entry[3]}' for '{source_fontname}'")
         best_specificity = specificity
         best_buffer = buffer
 
     return best_buffer
 
 
-def resolve_pdf_fontname(
-    pdf_fontname: str, font_flags: int = 0, must_cover: str = ""
-) -> Optional[str]:
+def resolve_pdf_fontname(pdf_fontname: str, font_flags: int = 0, must_cover: str = "") -> Optional[str]:
     """Match an extracted PDF font name to an installed system font file.
 
     ``must_cover`` (the replacement text) rejects a match whose font lacks
@@ -232,9 +237,11 @@ def get_default_korean_font_path() -> Optional[str]:
                 return path
     return None
 
+
 if __name__ == "__main__":
     # Example usage
     from app.logger import setup_logger
+
     setup_logger()
 
     # Test getting a specific font
@@ -250,4 +257,3 @@ if __name__ == "__main__":
 
     non_existent_path = get_font_path_by_name("NonExistentFont")
     print(f"NonExistentFont path: {non_existent_path}")
-

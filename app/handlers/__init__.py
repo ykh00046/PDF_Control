@@ -11,6 +11,7 @@ to ``MainWindow`` through multiple inheritance:
 All state remains on ``MainWindow`` (``self.controller``, ``self.viewer``,
 ``self.config``, etc.); mixins carry no instance state of their own.
 """
+
 from app.handlers.dialog_handlers import DialogHandlerMixin
 from app.handlers.edit_handlers import EditHandlerMixin
 from app.handlers.file_handlers import FileHandlerMixin

@@ -2,6 +2,7 @@
 
 Split out of the former monolithic ``app/model.py`` (model-restructure).
 """
+
 from typing import Any, Dict, List, Optional
 
 import fitz
@@ -21,8 +22,11 @@ class WordBox:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "rect": list(self.rect), "text": self.text, "block": self.block,
-            "line": self.line, "word_no": self.word_no,
+            "rect": list(self.rect),
+            "text": self.text,
+            "block": self.block,
+            "line": self.line,
+            "word_no": self.word_no,
         }
 
     @staticmethod
@@ -41,8 +45,7 @@ class PageModel:
         if self._words is None:
             raw_words = page.get_text("words")
             self._words = [
-                WordBox(fitz.Rect(w[0], w[1], w[2], w[3]), sanitize_unicode(w[4]), w[5], w[6], w[7])
-                for w in raw_words
+                WordBox(fitz.Rect(w[0], w[1], w[2], w[3]), sanitize_unicode(w[4]), w[5], w[6], w[7]) for w in raw_words
             ]
         return self._words
 

@@ -39,8 +39,8 @@ class PDFViewer(QGraphicsView):
         self.selection_rect_item: Optional[QGraphicsRectItem] = None
 
         # Process-based rendering & cache
-        self.image_cache = {} # Key: hash string, Value: QImage
-        self.cache_size = 20 # Max number of cached images
+        self.image_cache = {}  # Key: hash string, Value: QImage
+        self.cache_size = 20  # Max number of cached images
         self._active_render_process: Optional[subprocess.Popen] = None
         self._active_request_key: Optional[str] = None
         self._active_render_context: Optional[Dict] = None
@@ -49,7 +49,7 @@ class PDFViewer(QGraphicsView):
         self._render_poll_timer.timeout.connect(self._poll_render_process)
 
     def set_document_session(self, session: DocumentSession):
-        self.image_cache.clear() # Clear cache on new document
+        self.image_cache.clear()  # Clear cache on new document
         try:
             self._cancel_active_render()
             self.session = session
@@ -69,7 +69,7 @@ class PDFViewer(QGraphicsView):
         # Serialize ops data to string for hash
         ops_str = json.dumps(ops_data, sort_keys=True)
         key_str = f"{self.session.file_path}_{page_index}_{zoom:.2f}_{ops_str}"
-        return hashlib.md5(key_str.encode('utf-8')).hexdigest()
+        return hashlib.md5(key_str.encode("utf-8")).hexdigest()
 
     def _current_ops_data(self, page_index: Optional[int] = None) -> List[Dict]:
         if not self.session:
@@ -326,9 +326,7 @@ class PDFViewer(QGraphicsView):
 
         # Only update if it matches the current render state.
         if page_index != self.current_page_index or request_key != current_cache_key:
-            get_logger().debug(
-                f"Ignoring stale render result: page={page_index}, zoom={zoom:.2f}, key={request_key}"
-            )
+            get_logger().debug(f"Ignoring stale render result: page={page_index}, zoom={zoom:.2f}, key={request_key}")
             self.render_finished.emit()
             return
 
@@ -505,13 +503,15 @@ class PDFViewer(QGraphicsView):
             bottom_right_item = self.current_pixmap_item.mapFromScene(qrectf.bottomRight())
             scale = self.zoom_level * 150 / 72
             pdf_rect = fitz.Rect(
-                top_left_item.x() / scale, top_left_item.y() / scale,
-                bottom_right_item.x() / scale, bottom_right_item.y() / scale,
+                top_left_item.x() / scale,
+                top_left_item.y() / scale,
+                bottom_right_item.x() / scale,
+                bottom_right_item.y() / scale,
             )
             return pdf_rect & self.session.doc[self.current_page_index].rect
         except Exception as e:
             get_logger().debug(f"Error converting QRectF to fitz.Rect: {e}")
-            return fitz.Rect(0,0,0,0)
+            return fitz.Rect(0, 0, 0, 0)
 
     def closeEvent(self, event):
         self._cancel_active_render()

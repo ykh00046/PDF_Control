@@ -14,6 +14,7 @@ from app.path_helper import get_logs_dir
 _logger = None
 _log_file_path: Path | None = None
 
+
 def setup_logger(log_dir: str | Path | None = None, log_level: int = logging.DEBUG) -> logging.Logger:
     """
     Configure and return the application logger with rotating file handler.
@@ -47,28 +48,21 @@ def setup_logger(log_dir: str | Path | None = None, log_level: int = logging.DEB
 
     # Create formatter
     formatter = logging.Formatter(
-        fmt='%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+        fmt="%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
     # File handler with daily rotation (keeps last 7 days)
-    date_token = datetime.now().strftime('%Y%m%d')
+    date_token = datetime.now().strftime("%Y%m%d")
     log_filename = log_path / f"app_{date_token}.log"
     try:
         file_handler: logging.Handler = logging.handlers.TimedRotatingFileHandler(
-            filename=log_filename,
-            when='midnight',
-            interval=1,
-            backupCount=7,
-            encoding='utf-8'
+            filename=log_filename, when="midnight", interval=1, backupCount=7, encoding="utf-8"
         )
     except OSError:
         # Multi-process frozen runs on Windows can contend on a shared log file.
         log_filename = log_path / f"app_{date_token}_{os.getpid()}.log"
-        file_handler = logging.FileHandler(
-            filename=log_filename,
-            encoding='utf-8'
-        )
+        file_handler = logging.FileHandler(filename=log_filename, encoding="utf-8")
     file_handler.setLevel(logging.DEBUG)  # File logs everything
     file_handler.setFormatter(formatter)
     _logger.addHandler(file_handler)
@@ -117,9 +111,7 @@ def log_operation(operation_type: str, page_index: int, rect_count: int, **kwarg
     """
     logger = get_logger()
     metadata = ", ".join(f"{k}={v}" for k, v in kwargs.items() if k != "text")
-    logger.info(
-        f"Operation: {operation_type} | Page: {page_index} | Rects: {rect_count} | {metadata}"
-    )
+    logger.info(f"Operation: {operation_type} | Page: {page_index} | Rects: {rect_count} | {metadata}")
 
 
 def log_file_operation(operation: str, file_path: str, success: bool, error_msg: str = "") -> None:
@@ -155,13 +147,9 @@ def log_render_performance(page_index: int, render_time_ms: float, zoom_level: f
     logger = get_logger()
 
     if render_time_ms > 2000:
-        logger.warning(
-            f"SLOW RENDER: Page {page_index} | {render_time_ms:.0f}ms | Zoom: {zoom_level:.2f}x"
-        )
+        logger.warning(f"SLOW RENDER: Page {page_index} | {render_time_ms:.0f}ms | Zoom: {zoom_level:.2f}x")
     else:
-        logger.debug(
-            f"Render: Page {page_index} | {render_time_ms:.0f}ms | Zoom: {zoom_level:.2f}x"
-        )
+        logger.debug(f"Render: Page {page_index} | {render_time_ms:.0f}ms | Zoom: {zoom_level:.2f}x")
 
 
 def log_coordinate_transform(from_coords: Any, to_coords: Any, transform_type: str) -> None:

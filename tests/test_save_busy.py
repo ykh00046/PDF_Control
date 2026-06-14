@@ -4,6 +4,7 @@ The save path shows a WaitCursor during the blocking save; it MUST always be
 restored, including on a save failure -- a leaked override cursor would persist
 for the whole session.
 """
+
 import os
 from unittest.mock import patch
 
@@ -50,9 +51,11 @@ def test_cursor_restored_after_successful_save(main_window, qtbot, tmp_path):
 def test_cursor_restored_after_failed_save(main_window, qtbot, tmp_path):
     _drain_override_cursors()
     out = str(tmp_path / "fail.pdf")
-    with patch.object(QFileDialog, "getSaveFileName", return_value=(out, "PDF Files (*.pdf)")), \
-         patch.object(main_window.controller, "save_document", side_effect=RuntimeError("boom")), \
-         patch("app.handlers.file_handlers.QMessageBox.critical"):
+    with (
+        patch.object(QFileDialog, "getSaveFileName", return_value=(out, "PDF Files (*.pdf)")),
+        patch.object(main_window.controller, "save_document", side_effect=RuntimeError("boom")),
+        patch("app.handlers.file_handlers.QMessageBox.critical"),
+    ):
         assert main_window.save_file_as() is False
     # The WaitCursor must not leak even though the save raised.
     assert QApplication.overrideCursor() is None

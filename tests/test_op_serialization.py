@@ -7,6 +7,7 @@ wrap choice -- a silent preview!=save divergence. Comparing the full
 ``to_dict`` payloads keeps any future field addition inside this net
 automatically.
 """
+
 import fitz
 import pytest
 
@@ -65,8 +66,12 @@ def test_remove_section_round_trip():
 
 def test_watermark_round_trip():
     op = WatermarkText(
-        2, "CONFIDENTIAL", fontsize=48.0,
-        color=(0.4, 0.4, 0.4), opacity=0.25, angle=30.0,
+        2,
+        "CONFIDENTIAL",
+        fontsize=48.0,
+        color=(0.4, 0.4, 0.4),
+        opacity=0.25,
+        angle=30.0,
     )
     _round_trip(op)
     restored = Operation.from_dict(op.to_dict())
@@ -78,9 +83,14 @@ def test_watermark_round_trip():
 
 def test_watermark_legacy_payload_uses_defaults():
     """Only 'text' is mandatory; missing optional keys fall back to defaults."""
-    restored = Operation.from_dict({
-        "type": "WatermarkText", "page_index": 0, "rects": [], "text": "DRAFT",
-    })
+    restored = Operation.from_dict(
+        {
+            "type": "WatermarkText",
+            "page_index": 0,
+            "rects": [],
+            "text": "DRAFT",
+        }
+    )
     assert restored.fontsize == 40.0
     assert restored.color == (0.5, 0.5, 0.5)
     assert restored.opacity == 0.3
@@ -98,10 +108,14 @@ def test_image_watermark_round_trip():
 
 
 def test_image_watermark_legacy_payload_uses_defaults():
-    restored = Operation.from_dict({
-        "type": "WatermarkImage", "page_index": 0, "rects": [],
-        "image_path": "/tmp/x.png",
-    })
+    restored = Operation.from_dict(
+        {
+            "type": "WatermarkImage",
+            "page_index": 0,
+            "rects": [],
+            "image_path": "/tmp/x.png",
+        }
+    )
     assert restored.opacity == 0.3
     assert restored.scale == 0.5
     assert restored.rotate == 0

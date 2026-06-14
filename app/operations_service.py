@@ -7,6 +7,7 @@ OperationApplicator`` continue to work; new code should prefer
 This shim will be removed after the consumer-migration PDCA cycle confirms
 no external callers rely on the legacy import path.
 """
+
 from app.operations import (  # noqa: F401
     ApplyMode,
     ApplyResult,

@@ -3,6 +3,7 @@
 Exposes :class:`FileHandlerMixin` covering open / save / close / drag-drop.
 All state lives on ``MainWindow``; this mixin holds no instance state.
 """
+
 from __future__ import annotations
 
 import os
@@ -46,9 +47,7 @@ class FileHandlerMixin:
                 return
 
         initial_dir = self.last_directory if self.last_directory else ""
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, tr("dialog.open_pdf"), initial_dir, "PDF Files (*.pdf)"
-        )
+        file_path, _ = QFileDialog.getOpenFileName(self, tr("dialog.open_pdf"), initial_dir, "PDF Files (*.pdf)")
         if file_path:
             if self._load_with_password_prompt(file_path):
                 self.last_directory = os.path.dirname(file_path)
@@ -165,11 +164,7 @@ class FileHandlerMixin:
             QApplication.processEvents()
             try:
                 self.controller.save_document(output_path, encryption=encryption)
-                saved_path = (
-                    self.controller.session.file_path
-                    if self.controller.session
-                    else output_path
-                )
+                saved_path = self.controller.session.file_path if self.controller.session else output_path
                 encrypted = encryption is not None and encryption.is_active()
                 if decrypt:
                     status_msg = tr("status.decrypted", saved_path)
@@ -180,9 +175,7 @@ class FileHandlerMixin:
                 self.statusBar().showMessage(status_msg)
                 self.logger.info("User saved document successfully")
 
-                self.setWindowTitle(
-                    f"{tr('app.title')} - {os.path.basename(saved_path)}"
-                )
+                self.setWindowTitle(f"{tr('app.title')} - {os.path.basename(saved_path)}")
 
                 self.last_directory = os.path.dirname(saved_path)
                 set_config_value(self.config, "last_directory", value=self.last_directory)
@@ -190,9 +183,7 @@ class FileHandlerMixin:
                 return True
             except Exception as e:
                 self.logger.error(f"Failed to save file: {e}")
-                QMessageBox.critical(
-                    self, tr("dialog.error"), tr("error.cannot_save", e)
-                )
+                QMessageBox.critical(self, tr("dialog.error"), tr("error.cannot_save", e))
                 return False
             finally:
                 QApplication.restoreOverrideCursor()

@@ -21,6 +21,7 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - run: ruff check app tests scripts main.py
+      - run: ruff format --check app tests scripts main.py
       # The suite already includes the mypy strict gate (tests/test_mypy.py),
       # the i18n validation, and the CLAUDE.md drift guard.
       - run: python -m pytest tests -q

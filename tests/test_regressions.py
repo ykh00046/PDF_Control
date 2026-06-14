@@ -33,11 +33,7 @@ def test_ui_remove_section_uses_supported_operation_keywords():
             continue
         if not isinstance(node.func, ast.Name) or node.func.id != "RemoveSectionAsImage":
             continue
-        bad_keywords.extend(
-            keyword.arg
-            for keyword in node.keywords
-            if keyword.arg not in {"dpi", "format"}
-        )
+        bad_keywords.extend(keyword.arg for keyword in node.keywords if keyword.arg not in {"dpi", "format"})
 
     assert bad_keywords == []
 
@@ -77,12 +73,7 @@ def test_batch_replace_uses_emitted_fontsize_payload():
     # process_batch_replacements moved from app/ui.py to
     # app/handlers/dialog_handlers.py as part of the ui_handlers split
     # (DialogHandlerMixin).
-    source = (
-        Path(__file__).parent.parent
-        / "app"
-        / "handlers"
-        / "dialog_handlers.py"
-    ).read_text(encoding="utf-8")
+    source = (Path(__file__).parent.parent / "app" / "handlers" / "dialog_handlers.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
     target_func = next(
         node
@@ -93,15 +84,10 @@ def test_batch_replace_uses_emitted_fontsize_payload():
     redact_replace_calls = [
         node
         for node in ast.walk(target_func)
-        if isinstance(node, ast.Call)
-        and isinstance(node.func, ast.Name)
-        and node.func.id == "RedactReplace"
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "RedactReplace"
     ]
 
-    assert any(
-        any(keyword.arg == "fontsize" for keyword in node.keywords)
-        for node in redact_replace_calls
-    )
+    assert any(any(keyword.arg == "fontsize" for keyword in node.keywords) for node in redact_replace_calls)
 
 
 def test_save_document_rebinds_session_to_saved_file(tmp_path):

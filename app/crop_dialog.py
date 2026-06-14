@@ -186,7 +186,7 @@ class CropPreviewDialog(QDialog):
             "top": self.top_margin if self.top_check.isChecked() else 0,
             "bottom": self.bottom_margin if self.bottom_check.isChecked() else 0,
             "left": self.left_margin if self.left_check.isChecked() else 0,
-            "right": self.right_margin if self.right_check.isChecked() else 0
+            "right": self.right_margin if self.right_check.isChecked() else 0,
         }
 
         # Check if any cropping is selected

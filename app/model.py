@@ -12,6 +12,7 @@ and tests can keep importing from ``app.model`` unchanged:
 * :mod:`app.operations.crop`           — :class:`CropMargins`
 * :mod:`app.operations.remove_section` — :class:`RemoveSectionAsImage`
 """
+
 from app.document_model import PageModel, WordBox
 from app.document_session import DocumentSession
 from app.operations.base import Operation

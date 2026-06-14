@@ -6,6 +6,7 @@ Covers:
 * has() / has_errors() — predicates
 * ApplyResult.report property + legacy property delegation
 """
+
 from app.operations import (
     ApplyResult,
     OpWarning,
@@ -22,12 +23,14 @@ def test_summary_empty_report():
 
 
 def test_summary_counts_by_code():
-    report = WarningReport([
-        _w("text.shrunk"),
-        _w("text.shrunk"),
-        _w("text.shrunk"),
-        _w("text.overflow", severity="error"),
-    ])
+    report = WarningReport(
+        [
+            _w("text.shrunk"),
+            _w("text.shrunk"),
+            _w("text.shrunk"),
+            _w("text.overflow", severity="error"),
+        ]
+    )
     assert report.summary() == {"text.shrunk": 3, "text.overflow": 1}
 
 
@@ -90,6 +93,7 @@ def test_legacy_import_path_still_works():
     from app.operations_service import (
         WarningReport as Shim_WarningReport,
     )
+
     assert Shim_ApplyResult is ApplyResult
     assert Shim_OpWarning is OpWarning
     assert Shim_WarningReport is WarningReport

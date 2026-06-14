@@ -3,7 +3,7 @@ import fitz
 
 def generate_sample_pdf(filename="sample.pdf"):
     doc = fitz.open()  # new PDF
-    page = doc.new_page() # new page
+    page = doc.new_page()  # new page
 
     # Add some text
     page.insert_text((50, 70), "This is a sample document for testing purposes.", fontsize=12)
@@ -15,6 +15,7 @@ def generate_sample_pdf(filename="sample.pdf"):
     doc.save(filename)
     doc.close()
     print(f"Generated {filename}")
+
 
 if __name__ == "__main__":
     generate_sample_pdf()

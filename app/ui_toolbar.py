@@ -8,6 +8,7 @@ Pre-condition: MenuBuilder.build() must run before ToolbarBuilder.build()
 because the toolbar reuses ``undo_action``, ``redo_action``,
 ``zoom_in_action``, ``zoom_out_action``, ``fit_to_width_action``.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

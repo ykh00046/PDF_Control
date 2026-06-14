@@ -1,4 +1,3 @@
-
 import fitz
 import pytest
 
@@ -11,6 +10,7 @@ def main_window(qtbot):
     window = MainWindow()
     qtbot.addWidget(window)
     return window
+
 
 def test_viewer_render_crash_with_remove_section(main_window, qtbot, tmp_path):
     """Verify that rendering RemoveSectionAsImage in preview doesn't crash the viewer."""

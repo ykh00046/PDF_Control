@@ -4,6 +4,7 @@ Exposes :class:`StateUpdateMixin` which keeps derived UI state (history
 panel, edit-action enable flags, warning indicator, window title)
 in sync with the controller and viewer.
 """
+
 from __future__ import annotations
 
 import os
@@ -76,12 +77,8 @@ class StateUpdateMixin:
         QMessageBox.critical(self, tr("dialog.error"), message)
 
     def handle_selection_made(self: "MainWindow", pdf_rect) -> None:  # type: ignore[misc]
-        self.statusBar().showMessage(
-            tr("status.selection_made", pdf_rect, self.viewer.current_page_index + 1)
-        )
-        self.logger.debug(
-            f"Selection made: {pdf_rect} on page {self.viewer.current_page_index}"
-        )
+        self.statusBar().showMessage(tr("status.selection_made", pdf_rect, self.viewer.current_page_index + 1))
+        self.logger.debug(f"Selection made: {pdf_rect} on page {self.viewer.current_page_index}")
         self.last_selected_rect = pdf_rect
         self._update_edit_action_states()
 
@@ -139,13 +136,10 @@ class StateUpdateMixin:
                 if margins:
                     op_str += f" ({', '.join(margins)} pt)"
             elif isinstance(op, RemoveSectionAsImage):
-                op_str += (
-                    f" ({op.dpi} DPI, {op.format.upper()}, "
-                    f"{op.remove_rect.height:.0f}pt {tr('history.removed')})"
-                )
+                op_str += f" ({op.dpi} DPI, {op.format.upper()}, {op.remove_rect.height:.0f}pt {tr('history.removed')})"
                 op_str += f" @ {time.strftime('%H:%M:%S')}"
 
-            item = QListWidgetItem(f"{i+1}. {op_str}")
+            item = QListWidgetItem(f"{i + 1}. {op_str}")
 
             # Attach warning icon if this op was flagged in the latest preview.
             if isinstance(op, (RedactDelete, RedactReplace)):
@@ -153,19 +147,13 @@ class StateUpdateMixin:
                 redaction_counter[op.page_index] = intra_idx + 1
                 sev = warn_map.get((op.page_index, intra_idx))
                 if sev == "error":
-                    item.setIcon(
-                        self.style().standardIcon(QStyle.SP_MessageBoxCritical)
-                    )
+                    item.setIcon(self.style().standardIcon(QStyle.SP_MessageBoxCritical))
                     item.setToolTip(tr("warn.history.badge_overflow"))
                 elif sev == "warn":
-                    item.setIcon(
-                        self.style().standardIcon(QStyle.SP_MessageBoxWarning)
-                    )
+                    item.setIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
                     item.setToolTip(tr("warn.history.badge_shrunk"))
                 elif sev == "info":
-                    item.setIcon(
-                        self.style().standardIcon(QStyle.SP_MessageBoxInformation)
-                    )
+                    item.setIcon(self.style().standardIcon(QStyle.SP_MessageBoxInformation))
                     item.setToolTip(tr("warn.history.badge_wrapped"))
 
             self.history_list_widget.addItem(item)
@@ -178,9 +166,7 @@ class StateUpdateMixin:
             self.delete_action.setEnabled(bool(self.last_selected_rect))
             self.replace_action.setEnabled(bool(self.last_selected_rect))
             self.prev_page_action.setEnabled(self.viewer.current_page_index > 0)
-            self.next_page_action.setEnabled(
-                self.viewer.current_page_index < session.doc.page_count - 1
-            )
+            self.next_page_action.setEnabled(self.viewer.current_page_index < session.doc.page_count - 1)
             self.zoom_in_action.setEnabled(True)
             self.zoom_out_action.setEnabled(True)
             self.fit_to_width_action.setEnabled(True)

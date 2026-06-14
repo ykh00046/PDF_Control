@@ -11,6 +11,7 @@ Sub-modules:
                                      :class:`ApplyResult`
 * :mod:`app.operations.applicator` — :class:`OperationApplicator`
 """
+
 from app.operations.applicator import OperationApplicator
 from app.operations.types import ApplyMode, TextMetadata
 from app.operations.warnings import (

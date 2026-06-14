@@ -59,9 +59,7 @@ class I18nValidator:
                 keys.setdefault(match.group(1), []).append(py_file.name)
         return keys
 
-    def validate_tr_references(
-        self, source_dir: Path, translations: Dict[str, str], locale_name: str
-    ) -> None:
+    def validate_tr_references(self, source_dir: Path, translations: Dict[str, str], locale_name: str) -> None:
         """Every static tr() key in the source must exist in ``translations``.
 
         Catches the failure mode where a dialog references a key that is
@@ -72,8 +70,7 @@ class I18nValidator:
         for key, files in sorted(tr_keys.items()):
             if key not in translations:
                 self.errors.append(
-                    f"ERROR: tr() key '{key}' (used in {sorted(set(files))}) "
-                    f"is missing from {locale_name}"
+                    f"ERROR: tr() key '{key}' (used in {sorted(set(files))}) is missing from {locale_name}"
                 )
 
     def validate_keys(
@@ -89,15 +86,11 @@ class I18nValidator:
 
         missing = base_keys - target_keys
         if missing:
-            self.errors.append(
-                f"ERROR: {target_name} missing keys from {base_name}: {sorted(missing)}"
-            )
+            self.errors.append(f"ERROR: {target_name} missing keys from {base_name}: {sorted(missing)}")
 
         extra = target_keys - base_keys
         if extra:
-            self.warnings.append(
-                f"WARNING: {target_name} has extra keys not in {base_name}: {sorted(extra)}"
-            )
+            self.warnings.append(f"WARNING: {target_name} has extra keys not in {base_name}: {sorted(extra)}")
 
     def validate_format_strings(
         self,

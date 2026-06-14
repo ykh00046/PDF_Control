@@ -91,9 +91,7 @@ def test_wrap_respects_page_bottom():
 
 def test_wrap_disabled_falls_back_to_shrink(monkeypatch):
     """With the wrap policy off, long text shrinks as before."""
-    monkeypatch.setattr(
-        "app.operations.applicator.TEXT_WRAP_ENABLED", False
-    )
+    monkeypatch.setattr("app.operations.applicator.TEXT_WRAP_ENABLED", False)
     page = _make_page()
     long_text = "one two one two one two one two one two one two one two one two"
     op = RedactReplace(
@@ -122,9 +120,7 @@ def test_wrap_false_forces_shrink():
     op = RedactReplace(0, [_WRAPPABLE_RECT], _WRAPPABLE_TEXT, fontsize=12, wrap=False)
     result = OperationApplicator().apply_operations(page, [op], mode=ApplyMode.PREVIEW)
 
-    assert [w for w in result.warnings if w.code == "text.shrunk"], (
-        f"wrap=False should shrink, got {result.warnings}"
-    )
+    assert [w for w in result.warnings if w.code == "text.shrunk"], f"wrap=False should shrink, got {result.warnings}"
     assert not [w for w in result.warnings if w.code == "text.wrapped"]
 
 
@@ -145,22 +141,14 @@ def test_wrap_none_follows_global(monkeypatch):
     """wrap=None defers to TEXT_WRAP_ENABLED for both global states."""
     page_on = _make_page()
     op_on = RedactReplace(0, [_WRAPPABLE_RECT], _WRAPPABLE_TEXT, fontsize=12, wrap=None)
-    result_on = OperationApplicator().apply_operations(
-        page_on, [op_on], mode=ApplyMode.PREVIEW
-    )
-    assert [w for w in result_on.warnings if w.code == "text.wrapped"], (
-        "wrap=None with global ON should wrap"
-    )
+    result_on = OperationApplicator().apply_operations(page_on, [op_on], mode=ApplyMode.PREVIEW)
+    assert [w for w in result_on.warnings if w.code == "text.wrapped"], "wrap=None with global ON should wrap"
 
     monkeypatch.setattr("app.operations.applicator.TEXT_WRAP_ENABLED", False)
     page_off = _make_page()
     op_off = RedactReplace(0, [_WRAPPABLE_RECT], _WRAPPABLE_TEXT, fontsize=12, wrap=None)
-    result_off = OperationApplicator().apply_operations(
-        page_off, [op_off], mode=ApplyMode.PREVIEW
-    )
-    assert [w for w in result_off.warnings if w.code == "text.shrunk"], (
-        "wrap=None with global OFF should shrink"
-    )
+    result_off = OperationApplicator().apply_operations(page_off, [op_off], mode=ApplyMode.PREVIEW)
+    assert [w for w in result_off.warnings if w.code == "text.shrunk"], "wrap=None with global OFF should shrink"
 
 
 def test_redact_replace_wrap_to_dict():

@@ -1,4 +1,3 @@
-
 import sys
 from pathlib import Path
 
@@ -30,8 +29,8 @@ def test_style_extraction():
     print(f"   - 추출된 색상: {meta['color']} (기대값: (1.0, 0.0, 0.0))")
 
     # 검증
-    assert 19.0 <= meta['fontsize'] <= 21.0, f"폰트 크기 오류: {meta['fontsize']}"
-    assert meta['color'] == (1.0, 0.0, 0.0), f"색상 추출 오류: {meta['color']}"
+    assert 19.0 <= meta["fontsize"] <= 21.0, f"폰트 크기 오류: {meta['fontsize']}"
+    assert meta["color"] == (1.0, 0.0, 0.0), f"색상 추출 오류: {meta['color']}"
 
     # 3. RedactReplace 오퍼레이션 생성 및 데이터 보존 확인
     print("2. RedactReplace 오퍼레이션 생성 및 직렬화 테스트...")
@@ -39,17 +38,18 @@ def test_style_extraction():
         page_index=0,
         rects=[text_rect],
         new_text="REPLACED",
-        fontsize=meta['fontsize'],
-        color=meta['color'],
-        font_flags=meta['font_flags']
+        fontsize=meta["fontsize"],
+        color=meta["color"],
+        font_flags=meta["font_flags"],
     )
 
     op_dict = op.to_dict()
     print(f"   - 직렬화 데이터 색상: {op_dict['color']}")
-    assert op_dict['color'] == [1.0, 0.0, 0.0], "오퍼레이션 색상 저장 오류"
+    assert op_dict["color"] == [1.0, 0.0, 0.0], "오퍼레이션 색상 저장 오류"
 
     print("\n✅ 스타일 상속 기능 검증 성공!")
     doc.close()
+
 
 if __name__ == "__main__":
     try:
@@ -57,5 +57,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ 검증 실패: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

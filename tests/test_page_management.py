@@ -1,4 +1,5 @@
 """Tests for page management operations (rotate, delete, reorder, insert)."""
+
 import fitz
 import pytest
 
@@ -275,8 +276,8 @@ class TestDuplicatePages:
         session.add_operation(op_on_dup)
         session.add_operation(op_after)
         session.duplicate_pages([0])  # [P0, P0', P1, P2, P3, P4]
-        assert op_on_dup.page_index == 0   # original keeps its edits
-        assert op_after.page_index == 3    # shifted past the inserted copy
+        assert op_on_dup.page_index == 0  # original keeps its edits
+        assert op_after.page_index == 3  # shifted past the inserted copy
         assert "Page 3" in session.doc[op_after.page_index].get_text()
         session.close()
 
@@ -464,9 +465,7 @@ class TestSaveIntegrity:
         # Replace text on what is currently page 2 ("Page 3"), then delete page 0.
         page = session.doc[2]
         rect = page.search_for("Page 3")[0]
-        session.add_operation(
-            RedactReplace(2, [fitz.Rect(rect)], "Replaced", fontsize=12)
-        )
+        session.add_operation(RedactReplace(2, [fitz.Rect(rect)], "Replaced", fontsize=12))
         session.delete_pages([0])  # 5 -> 4 ; op on old idx2 remaps to idx1
         out = self._saved(tmp_path)
         session.save_document(out)

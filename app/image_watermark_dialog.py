@@ -6,6 +6,7 @@ WatermarkImage operations. Rotation is limited to 0/90/180/270 because
 ``Page.insert_image`` only supports those (unlike the text watermark's
 arbitrary-angle morph).
 """
+
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QButtonGroup,
@@ -57,9 +58,7 @@ class ImageWatermarkDialog(QDialog):
         self.opacity_slider.setRange(10, 100)
         self.opacity_slider.setValue(30)
         self.opacity_value = QLabel("30%")
-        self.opacity_slider.valueChanged.connect(
-            lambda v: self.opacity_value.setText(f"{v}%")
-        )
+        self.opacity_slider.valueChanged.connect(lambda v: self.opacity_value.setText(f"{v}%"))
         op_row.addWidget(self.opacity_slider)
         op_row.addWidget(self.opacity_value)
         layout.addLayout(op_row)
@@ -122,11 +121,13 @@ class ImageWatermarkDialog(QDialog):
             get_logger().info("Image watermark dialog: no file chosen, cancelled")
             self.reject()
             return
-        self.image_watermark_confirmed.emit({
-            "image_path": self._image_path,
-            "opacity": self.opacity_slider.value() / 100.0,
-            "scale": self.scale_spin.value() / 100.0,
-            "rotate": self.angle_combo.currentData(),
-            "all_pages": self.scope_all.isChecked(),
-        })
+        self.image_watermark_confirmed.emit(
+            {
+                "image_path": self._image_path,
+                "opacity": self.opacity_slider.value() / 100.0,
+                "scale": self.scale_spin.value() / 100.0,
+                "rotate": self.angle_combo.currentData(),
+                "all_pages": self.scope_all.isChecked(),
+            }
+        )
         self.accept()

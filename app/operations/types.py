@@ -3,6 +3,7 @@
 Kept dependency-free so the rest of the package can import these without
 circular references.
 """
+
 from __future__ import annotations
 
 from enum import Enum
@@ -24,5 +25,5 @@ class TextMetadata(TypedDict):
 class ApplyMode(Enum):
     """Mode for applying operations to PDF pages."""
 
-    SAVE = "save"        # Destructive: use redactions, permanent changes
+    SAVE = "save"  # Destructive: use redactions, permanent changes
     PREVIEW = "preview"  # Non-destructive: use draw_rect, temporary preview

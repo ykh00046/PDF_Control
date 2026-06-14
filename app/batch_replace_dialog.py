@@ -25,7 +25,7 @@ from app.text_utils import parse_page_range, sanitize_unicode
 
 class BatchReplaceDialog(QDialog):
     # Signal to emit when replacements are confirmed
-    replacements_confirmed = Signal(list) # List of dicts: {"page_index": int, "rect": fitz.Rect, "new_text": str}
+    replacements_confirmed = Signal(list)  # List of dicts: {"page_index": int, "rect": fitz.Rect, "new_text": str}
 
     def __init__(self, document_session, parent=None):
         super().__init__(parent)
@@ -33,7 +33,7 @@ class BatchReplaceDialog(QDialog):
         self.setGeometry(200, 200, 800, 600)
 
         self.document_session = document_session
-        self.matches: List[Dict[str, Any]] = [] # Stores all found matches
+        self.matches: List[Dict[str, Any]] = []  # Stores all found matches
         self.logger = get_logger()
 
         self._setup_ui()
@@ -104,19 +104,23 @@ class BatchReplaceDialog(QDialog):
         # --- Matches Table ---
         self.matches_table = QTableWidget()
         self.matches_table.setColumnCount(4)
-        self.matches_table.setHorizontalHeaderLabels([
-            tr("batch.header.page"), tr("batch.header.context"),
-            tr("batch.header.found_text"), tr("batch.header.replace"),
-        ])
+        self.matches_table.setHorizontalHeaderLabels(
+            [
+                tr("batch.header.page"),
+                tr("batch.header.context"),
+                tr("batch.header.found_text"),
+                tr("batch.header.replace"),
+            ]
+        )
         self.matches_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.matches_table.setSelectionBehavior(QAbstractItemView.SelectRows) # Select whole rows
+        self.matches_table.setSelectionBehavior(QAbstractItemView.SelectRows)  # Select whole rows
         main_layout.addWidget(self.matches_table)
 
         # --- Control Buttons ---
         button_layout = QHBoxLayout()
         self.replace_all_button = QPushButton(tr("batch.button.replace_selected"))
         self.replace_all_button.clicked.connect(self._confirm_replacements)
-        self.replace_all_button.setEnabled(False) # Disable until matches are found
+        self.replace_all_button.setEnabled(False)  # Disable until matches are found
         button_layout.addWidget(self.replace_all_button)
 
         self.cancel_button = QPushButton(tr("batch.button.cancel"))
@@ -140,11 +144,7 @@ class BatchReplaceDialog(QDialog):
         try:
             return parse_page_range(page_range_text, total_pages)
         except ValueError as e:
-            QMessageBox.warning(
-                self,
-                tr("batch.error.page_range.title"),
-                tr("batch.error.page_range.message", str(e))
-            )
+            QMessageBox.warning(self, tr("batch.error.page_range.title"), tr("batch.error.page_range.message", str(e)))
             return None
 
     def _find_all_matches(self):
@@ -195,13 +195,15 @@ class BatchReplaceDialog(QDialog):
             for rect in found_rects:
                 context_text = page.get_textbox(rect.expanded(20))
 
-                self.matches.append({
-                    "page_index": page_idx,
-                    "rect": rect,
-                    "found_text": find_text,
-                    "context": context_text,
-                    "replace": True
-                })
+                self.matches.append(
+                    {
+                        "page_index": page_idx,
+                        "rect": rect,
+                        "found_text": find_text,
+                        "context": context_text,
+                        "replace": True,
+                    }
+                )
 
     def _find_with_regex(self, pattern: str, target_pages=None):
         """Find matches using regular expression pattern."""
@@ -233,18 +235,20 @@ class BatchReplaceDialog(QDialog):
                     rect = found_rects[0]  # Use first match (may not be perfect)
                     context_text = page.get_textbox(rect.expanded(20))
 
-                    self.matches.append({
-                        "page_index": page_idx,
-                        "rect": rect,
-                        "found_text": matched_text,
-                        "context": context_text,
-                        "replace": True
-                    })
+                    self.matches.append(
+                        {
+                            "page_index": page_idx,
+                            "rect": rect,
+                            "found_text": matched_text,
+                            "context": context_text,
+                            "replace": True,
+                        }
+                    )
 
     def _populate_matches_table(self):
         self.matches_table.setRowCount(len(self.matches))
         for i, match in enumerate(self.matches):
-            self.matches_table.setItem(i, 0, QTableWidgetItem(str(match["page_index"] + 1))) # Page number
+            self.matches_table.setItem(i, 0, QTableWidgetItem(str(match["page_index"] + 1)))  # Page number
             self.matches_table.setItem(i, 1, QTableWidgetItem(match["context"]))
             self.matches_table.setItem(i, 2, QTableWidgetItem(match["found_text"]))
 
@@ -254,7 +258,7 @@ class BatchReplaceDialog(QDialog):
             self.matches_table.setItem(i, 3, checkbox_item)
 
             # Connect checkbox state change to update internal match data
-            checkbox_item.setData(Qt.UserRole, i) # Store row index
+            checkbox_item.setData(Qt.UserRole, i)  # Store row index
             # This would require connecting signal, which is more complex for direct table item
             # For simplicity, we'll read all checkboxes on _confirm_replacements
 
@@ -273,17 +277,18 @@ class BatchReplaceDialog(QDialog):
         for i, match in enumerate(self.matches):
             checkbox_item = self.matches_table.item(i, 3)
             if checkbox_item.checkState() == Qt.Checked:
-                replacements_to_emit.append({
-                    "page_index": match["page_index"],
-                    "rect": match["rect"],
-                    "new_text": replace_text,
-                    "fontsize": fixed_fontsize,  # None for auto, or fixed value
-                    "wrap": wrap_enabled         # True=wrap, False=shrink
-                })
+                replacements_to_emit.append(
+                    {
+                        "page_index": match["page_index"],
+                        "rect": match["rect"],
+                        "new_text": replace_text,
+                        "fontsize": fixed_fontsize,  # None for auto, or fixed value
+                        "wrap": wrap_enabled,  # True=wrap, False=shrink
+                    }
+                )
 
         if replacements_to_emit:
             self.replacements_confirmed.emit(replacements_to_emit)
             self.accept()
         else:
             QMessageBox.information(self, tr("batch.error.no_selection.title"), tr("batch.error.no_selection.message"))
-

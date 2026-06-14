@@ -4,6 +4,7 @@ Text utility functions for safe PDF text handling.
 Includes Unicode sanitization (inspired by opendataloader-pdf) and
 page range parsing for batch operations.
 """
+
 import re
 from typing import List, Set
 

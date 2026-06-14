@@ -5,6 +5,7 @@ The viewer must never write the source password into the on-disk job file
 ``password_stdin`` in the job payload and sends the password over the
 worker's stdin pipe.
 """
+
 import io
 import json
 import subprocess
@@ -16,6 +17,7 @@ from app.render_worker import run_render_job
 from app.viewer import PDFViewer
 
 # ── DocumentSession.render_password accessor ────────────────────────
+
 
 def test_render_password_returns_password_for_encrypted(encrypted_pdf):
     session = DocumentSession(str(encrypted_pdf), password="open123")
@@ -34,6 +36,7 @@ def test_render_password_is_none_for_plain(simple_pdf):
 
 
 # ── render_worker: stdin protocol ────────────────────────────────────
+
 
 def _write_job(tmp_path, source_pdf, **extra):
     job = {
@@ -76,6 +79,7 @@ def test_worker_without_flag_never_touches_stdin(simple_pdf, tmp_path, monkeypat
 
 
 # ── viewer: job file must not contain the password ───────────────────
+
 
 class _FakeStdin:
     def __init__(self):

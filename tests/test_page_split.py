@@ -3,6 +3,7 @@
 Covers the pure grouping logic (app.page_split) plus the I/O-bound
 DocumentSession.split_document / merge_pdfs methods.
 """
+
 import fitz
 import pytest
 
@@ -82,18 +83,14 @@ class TestComputeSplitGroups:
         assert compute_split_groups(4, SplitMode.EVERY_N, every_n=2) == [[0, 1], [2, 3]]
 
     def test_every_n_with_remainder(self):
-        assert compute_split_groups(5, SplitMode.EVERY_N, every_n=2) == [
-            [0, 1], [2, 3], [4]
-        ]
+        assert compute_split_groups(5, SplitMode.EVERY_N, every_n=2) == [[0, 1], [2, 3], [4]]
 
     def test_every_n_requires_positive(self):
         with pytest.raises(ValueError):
             compute_split_groups(5, SplitMode.EVERY_N, every_n=0)
 
     def test_ranges_mode_delegates(self):
-        assert compute_split_groups(
-            9, SplitMode.RANGES, ranges_spec="1-3,5"
-        ) == [[0, 1, 2], [4]]
+        assert compute_split_groups(9, SplitMode.RANGES, ranges_spec="1-3,5") == [[0, 1, 2], [4]]
 
     def test_ranges_requires_spec(self):
         with pytest.raises(ValueError):
@@ -161,9 +158,7 @@ class TestSplitDocument:
         session = DocumentSession(multi_page_pdf)
         out_dir = tmp_path / "out"
         out_dir.mkdir()
-        written = session.split_document(
-            str(out_dir), [[0], [1]], base_name="chapter"
-        )
+        written = session.split_document(str(out_dir), [[0], [1]], base_name="chapter")
         assert written[0].endswith("chapter_001.pdf")
         assert written[1].endswith("chapter_002.pdf")
         session.close()

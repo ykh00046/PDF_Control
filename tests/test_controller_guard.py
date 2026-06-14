@@ -4,6 +4,7 @@ The controller routes session mutations through a single guard that
 distinguishes the no-session case, user-validation rejections (ValueError),
 and internal failures -- all previously 14 copies of the same try/except.
 """
+
 import fitz
 import pytest
 

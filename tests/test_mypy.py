@@ -48,9 +48,7 @@ def test_operations_package_passes_mypy_strict():
         text=True,
     )
     assert result.returncode == 0, (
-        f"mypy --strict failed on app.operations:\n"
-        f"--- stdout ---\n{result.stdout}\n"
-        f"--- stderr ---\n{result.stderr}"
+        f"mypy --strict failed on app.operations:\n--- stdout ---\n{result.stdout}\n--- stderr ---\n{result.stderr}"
     )
 
 

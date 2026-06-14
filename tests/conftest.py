@@ -46,7 +46,8 @@ def _suppress_close_confirm_dialog(monkeypatch):
     except ImportError:
         return
     monkeypatch.setattr(
-        QMessageBox, "question",
+        QMessageBox,
+        "question",
         lambda *args, **kwargs: QMessageBox.StandardButton.Discard,
     )
 

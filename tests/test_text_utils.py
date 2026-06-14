@@ -1,4 +1,5 @@
 """Tests for app.text_utils module."""
+
 import pytest
 
 from app.text_utils import format_page_range, parse_page_range, sanitize_unicode

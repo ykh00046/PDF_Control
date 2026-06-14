@@ -81,6 +81,7 @@ def test_detect_drift_clean():
 def test_real_claude_md_is_consistent():
     """The actual project file must not drift."""
     import yaml
+
     resolved = yaml.safe_load((ROOT / "docs" / "_resolved.yml").read_text(encoding="utf-8"))
     slugs = {e["slug"] for e in resolved["resolved"]}
     drift = detect_drift((ROOT / "CLAUDE.md").read_text(encoding="utf-8"), slugs)

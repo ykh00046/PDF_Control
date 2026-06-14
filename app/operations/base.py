@@ -6,6 +6,7 @@ The concrete operation types live in sibling modules
 :mod:`app.operations.remove_section`). ``Operation.from_dict`` imports them
 lazily to avoid a base <-> subclass import cycle.
 """
+
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 
@@ -52,20 +53,22 @@ class Operation(ABC):
         elif op_type == "RedactReplace":
             color = data.get("color", None)
             return RedactReplace(
-                page_index, rects, data["new_text"],
-                data.get("fontname", "helv"), data.get("fontsize", 0),
-                data.get("align", 0), data.get("fontfile", None),
+                page_index,
+                rects,
+                data["new_text"],
+                data.get("fontname", "helv"),
+                data.get("fontsize", 0),
+                data.get("align", 0),
+                data.get("fontfile", None),
                 tuple(color) if color else None,
                 data.get("font_flags", 0),
                 # Absent key (pre-r4 serialized data) restores to None,
                 # i.e. "follow the global TEXT_WRAP_ENABLED default".
-                wrap=data.get("wrap", None)
+                wrap=data.get("wrap", None),
             )
         elif op_type == "CropMargins":
             return CropMargins(
-                page_index,
-                data.get("top", 0), data.get("bottom", 0),
-                data.get("left", 0), data.get("right", 0)
+                page_index, data.get("top", 0), data.get("bottom", 0), data.get("left", 0), data.get("right", 0)
             )
         elif op_type == "RemoveSectionAsImage":
             # RemoveSectionAsImage stores remove_rect separately
@@ -74,7 +77,7 @@ class Operation(ABC):
                 page_index,
                 remove_rect,
                 data.get("dpi", DEFAULT_REMOVE_SECTION_DPI),
-                data.get("format", DEFAULT_REMOVE_SECTION_FORMAT)
+                data.get("format", DEFAULT_REMOVE_SECTION_FORMAT),
             )
         elif op_type == "WatermarkText":
             wm_color = data.get("color")

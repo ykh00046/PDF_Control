@@ -1,4 +1,5 @@
 """Tests for opening encrypted PDFs + removing protection (pdf-open-decrypt PDCA)."""
+
 import fitz
 import pytest
 
@@ -12,6 +13,7 @@ from app.encryption import (
 from app.pdf_engine import open_document, save_document_copy
 
 # ── open_document: password handling ────────────────────────────────
+
 
 def test_open_encrypted_without_password_raises(encrypted_pdf):
     with pytest.raises(PasswordRequired):
@@ -56,6 +58,7 @@ def test_password_exceptions_share_base():
 
 # ── DocumentSession integration ─────────────────────────────────────
 
+
 def test_session_opens_encrypted_with_password(encrypted_pdf):
     session = DocumentSession(str(encrypted_pdf), password="open123")
     try:
@@ -81,6 +84,7 @@ def test_session_plain_is_not_encrypted(simple_pdf):
 
 # ── save_document_copy: read encrypted source ───────────────────────
 
+
 def test_save_copy_reads_encrypted_source(encrypted_pdf, tmp_path):
     """A protected source can be copied to a plain output (decrypt)."""
     out = str(tmp_path / "decrypted.pdf")
@@ -101,6 +105,7 @@ def test_save_copy_encrypted_source_wrong_password_raises(encrypted_pdf, tmp_pat
 
 
 # ── Remove protection (decrypt) round-trip via session ──────────────
+
 
 def test_session_decrypt_round_trip(encrypted_pdf, tmp_path):
     """Open encrypted → plain save → reopen without password, content kept."""

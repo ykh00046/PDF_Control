@@ -14,6 +14,7 @@ live in dedicated modules:
 * :mod:`app.ui_statusbar` — :class:`StatusBarManager`
 * :mod:`app.handlers` — handler mixins inherited by MainWindow below
 """
+
 from __future__ import annotations
 
 from typing import Optional
@@ -87,9 +88,7 @@ class MainWindow(
         self.controller.error_occurred.connect(self.on_error_occurred)
 
         self.last_selected_rect: Optional[fitz.Rect] = None
-        self.last_directory: str = get_config_value(
-            self.config, "last_directory", default=""
-        )
+        self.last_directory: str = get_config_value(self.config, "last_directory", default="")
         self.current_replacement_font_path: Optional[str] = None
 
         # --- Central viewer ------------------------------------------------
@@ -102,12 +101,8 @@ class MainWindow(
         layout.addWidget(self.viewer)
         self.viewer.selection_made.connect(self.handle_selection_made)
         self.viewer.page_changed.connect(self._handle_page_changed)
-        self.viewer.render_started.connect(
-            lambda: self.statusBar().showMessage(tr("status.rendering"))
-        )
-        self.viewer.render_finished.connect(
-            lambda: self.statusBar().showMessage(tr("status.render_ready"))
-        )
+        self.viewer.render_started.connect(lambda: self.statusBar().showMessage(tr("status.rendering")))
+        self.viewer.render_finished.connect(lambda: self.statusBar().showMessage(tr("status.render_ready")))
         self.viewer.render_finished.connect(self._update_status_bar_page_info)
 
         # --- UI assembly ---------------------------------------------------
@@ -135,13 +130,10 @@ class MainWindow(
         self.history_dock.setWidget(self.history_list_widget)
         self.addDockWidget(Qt.RightDockWidgetArea, self.history_dock)
 
-        self.history_dock.setVisible(
-            get_config_value(self.config, "ui", "history_panel_visible", default=True)
-        )
+        self.history_dock.setVisible(get_config_value(self.config, "ui", "history_panel_visible", default=True))
         # Keep toggle action (created later) in sync with dock visibility.
         self.history_dock.visibilityChanged.connect(
-            lambda visible: hasattr(self, "toggle_history_action")
-            and self.toggle_history_action.setChecked(visible)
+            lambda visible: hasattr(self, "toggle_history_action") and self.toggle_history_action.setChecked(visible)
         )
 
     # --------------------------------------------------- Qt event overrides

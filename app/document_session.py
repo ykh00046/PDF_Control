@@ -2,6 +2,7 @@
 
 Split out of the former monolithic ``app/model.py`` (model-restructure).
 """
+
 import bisect
 import os
 from typing import Any, Callable, Dict, List, Optional
@@ -69,8 +70,7 @@ class DocumentSession(QObject):
     def add_operation(self, operation: Operation) -> None:
         if isinstance(operation, RemoveSectionAsImage):
             already_exists = any(
-                isinstance(existing, RemoveSectionAsImage)
-                and existing.page_index == operation.page_index
+                isinstance(existing, RemoveSectionAsImage) and existing.page_index == operation.page_index
                 for existing in self.history
             )
             if already_exists:
@@ -137,9 +137,7 @@ class DocumentSession(QObject):
 
         apply_page_operations(page, operations_for_page, mode=ApplyMode.SAVE, logger=get_logger())
 
-    def save_document(
-        self, output_path: str, encryption: Optional[EncryptionSettings] = None
-    ) -> None:
+    def save_document(self, output_path: str, encryption: Optional[EncryptionSettings] = None) -> None:
         logger = get_logger()
         try:
             logger.info(f"Saving document: {len(self.history)} operations to apply")
@@ -150,8 +148,12 @@ class DocumentSession(QObject):
             # (save-integrity, 2026-06-14). history op redactions apply to this
             # throwaway buffer copy, leaving self.doc intact for preview/edit.
             save_document_copy(
-                self.file_path, output_path, self.history,
-                logger=logger, encryption=encryption, password=self._password,
+                self.file_path,
+                output_path,
+                self.history,
+                logger=logger,
+                encryption=encryption,
+                password=self._password,
                 source_bytes=self.doc.tobytes(),
             )
 
@@ -196,9 +198,7 @@ class DocumentSession(QObject):
         for idx in sorted(page_indices, reverse=True):
             self.doc.delete_page(idx)
             # Remove operations referencing deleted page, adjust indices
-            self.history = [
-                op for op in self.history if op.page_index != idx
-            ]
+            self.history = [op for op in self.history if op.page_index != idx]
             for op in self.history:
                 if op.page_index > idx:
                     op.page_index -= 1
@@ -238,9 +238,7 @@ class DocumentSession(QObject):
         self._remap_history_after_reorder(remap)
         get_logger().info(f"Moved page {from_index} → {to_index}")
 
-    def insert_blank_page(
-        self, after_index: int = -1, width: float = 595, height: float = 842
-    ) -> None:
+    def insert_blank_page(self, after_index: int = -1, width: float = 595, height: float = 842) -> None:
         """Insert a blank page (default A4) after the specified index. -1 means at the end."""
         if after_index == -1:
             insert_at = self.doc.page_count
@@ -317,9 +315,7 @@ class DocumentSession(QObject):
         # Each copy is inserted right AFTER its original, so an operation
         # shifts by the number of duplicated indices strictly below it
         # (an op on a duplicated page stays attached to the original).
-        self._remap_history_after_reorder(
-            lambda p: p + bisect.bisect_left(sorted_indices, p)
-        )
+        self._remap_history_after_reorder(lambda p: p + bisect.bisect_left(sorted_indices, p))
         get_logger().info(f"Duplicated {len(page_indices)} page(s)")
         return len(page_indices)
 
@@ -350,9 +346,7 @@ class DocumentSession(QObject):
             new_doc.save(output_path)
         finally:
             new_doc.close()
-        get_logger().info(
-            f"Extracted {len(page_indices)} page(s) to {output_path}"
-        )
+        get_logger().info(f"Extracted {len(page_indices)} page(s) to {output_path}")
 
     def merge_pdfs(self, source_paths: List[str], after_index: int = -1) -> int:
         """Insert every page from each source PDF, in order, after ``after_index``.
@@ -390,17 +384,11 @@ class DocumentSession(QObject):
                 src.close()
             cursor += added
             total_added += added
-            get_logger().info(
-                f"Merged {added} page(s) from {source_path}"
-            )
+            get_logger().info(f"Merged {added} page(s) from {source_path}")
         # All insertions form one contiguous block starting at insert_start,
         # so existing operations at/after it shift by the total page count.
-        self._remap_history_after_reorder(
-            lambda p: p + total_added if p >= insert_start else p
-        )
-        get_logger().info(
-            f"Merged {total_added} page(s) total from {len(source_paths)} file(s)"
-        )
+        self._remap_history_after_reorder(lambda p: p + total_added if p >= insert_start else p)
+        get_logger().info(f"Merged {total_added} page(s) total from {len(source_paths)} file(s)")
         return total_added
 
     def merge_pdf(self, source_path: str, after_index: int = -1) -> int:
@@ -474,9 +462,7 @@ class DocumentSession(QObject):
                 new_doc.close()
             written.append(output_path)
 
-        get_logger().info(
-            f"Split document into {len(written)} file(s) in {output_dir}"
-        )
+        get_logger().info(f"Split document into {len(written)} file(s) in {output_dir}")
         return written
 
     def extract_text(self, page_indices: Optional[List[int]] = None, fmt: str = "txt") -> str:

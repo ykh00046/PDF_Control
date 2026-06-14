@@ -3,6 +3,7 @@
 Exposes :class:`EditHandlerMixin` covering undo / redo / delete / replace
 selection and replacement font selection.
 """
+
 from __future__ import annotations
 
 import os
@@ -54,9 +55,7 @@ class EditHandlerMixin:
             if not self.controller.add_operation(operation):
                 return
 
-            self.statusBar().showMessage(
-                tr("status.deleted", self.last_selected_rect)
-            )
+            self.statusBar().showMessage(tr("status.deleted", self.last_selected_rect))
             self.logger.info(f"User deleted selection on page {page_index}")
             self.last_selected_rect = None
             self.viewer.clear_selection()
@@ -131,14 +130,9 @@ class EditHandlerMixin:
         if source_fontname:
             from app.fonts import resolve_pdf_fontname
 
-            matched = resolve_pdf_fontname(
-                source_fontname, source_flags, must_cover=replacement_text
-            )
+            matched = resolve_pdf_fontname(source_fontname, source_flags, must_cover=replacement_text)
             if matched:
-                self.logger.info(
-                    f"Matched source font '{source_fontname}' -> "
-                    f"{os.path.basename(matched)}"
-                )
+                self.logger.info(f"Matched source font '{source_fontname}' -> {os.path.basename(matched)}")
                 return matched
 
         if not contains_hangul(replacement_text):
@@ -147,12 +141,8 @@ class EditHandlerMixin:
 
         font_path = get_default_korean_font_path()
         if font_path:
-            self.logger.info(
-                f"Auto-selected default Korean font: {os.path.basename(font_path)}"
-            )
-            self.statusBar().showMessage(
-                tr("status.font_auto_selected", os.path.basename(font_path))
-            )
+            self.logger.info(f"Auto-selected default Korean font: {os.path.basename(font_path)}")
+            self.statusBar().showMessage(tr("status.font_auto_selected", os.path.basename(font_path)))
         return font_path
 
     def replace_selection(self: "MainWindow") -> None:  # type: ignore[misc]
@@ -164,9 +154,7 @@ class EditHandlerMixin:
 
         page_index = self.viewer.current_page_index
         page = self.controller.session.doc[page_index]
-        target_rect, existing_text = self._snap_selection_to_text(
-            page, self.last_selected_rect
-        )
+        target_rect, existing_text = self._snap_selection_to_text(page, self.last_selected_rect)
 
         replacement_text = self._prompt_replacement_text(existing_text)
         if replacement_text is None:
@@ -176,9 +164,7 @@ class EditHandlerMixin:
             from app.model import _extract_text_metadata
 
             meta = _extract_text_metadata(page, target_rect)
-            font_path = self._resolve_replacement_font(
-                replacement_text, meta["fontname"], meta["font_flags"]
-            )
+            font_path = self._resolve_replacement_font(replacement_text, meta["fontname"], meta["font_flags"])
             operation = RedactReplace(
                 page_index,
                 [target_rect],
@@ -191,9 +177,7 @@ class EditHandlerMixin:
             )
             if not self.controller.add_operation(operation):
                 return
-            self.statusBar().showMessage(
-                tr("status.replaced", target_rect, replacement_text)
-            )
+            self.statusBar().showMessage(tr("status.replaced", target_rect, replacement_text))
             self.logger.info(f"User replaced selection on page {page_index}")
             self.last_selected_rect = None
             self.viewer.clear_selection()
@@ -224,15 +208,9 @@ class EditHandlerMixin:
 
             if font_path:
                 self.current_replacement_font_path = font_path
-                self.statusBar().showMessage(
-                    tr("status.font_selected", os.path.basename(font_path))
-                )
-                self.logger.info(
-                    f"Replacement font selected: {os.path.basename(font_path)}"
-                )
-                set_config_value(
-                    self.config, "replacement_font_path", value=font_path
-                )
+                self.statusBar().showMessage(tr("status.font_selected", os.path.basename(font_path)))
+                self.logger.info(f"Replacement font selected: {os.path.basename(font_path)}")
+                set_config_value(self.config, "replacement_font_path", value=font_path)
                 save_config(self.config)
                 self._update_status_bar_font_info()
             else:
@@ -242,12 +220,8 @@ class EditHandlerMixin:
                     tr("font_dialog.warning.title"),
                     tr("font_dialog.warning.message", font_family),
                 )
-                self.statusBar().showMessage(
-                    tr("status.font_not_found", font_family)
-                )
-                self.logger.warning(
-                    f"Could not find font file for '{font_family}'"
-                )
+                self.statusBar().showMessage(tr("status.font_not_found", font_family))
+                self.logger.warning(f"Could not find font file for '{font_family}'")
         else:
             self.statusBar().showMessage(tr("status.font_selection_cancelled"))
             self.logger.info("Font selection cancelled.")

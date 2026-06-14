@@ -38,6 +38,7 @@ def test_path_helper_resolves_resources_in_frozen_mode(tmp_path, monkeypatch):
     import importlib
 
     import app.path_helper as ph
+
     importlib.reload(ph)
 
     try:
@@ -53,6 +54,7 @@ def test_path_helper_resolves_resources_in_frozen_mode(tmp_path, monkeypatch):
 
 def test_dev_mode_resolves_real_i18n_files():
     import app.path_helper as ph
+
     assert not ph.is_frozen()
     assert ph.get_i18n_path("en.json").exists()
     assert ph.get_i18n_path("ko.json").exists()
@@ -64,13 +66,14 @@ def test_app_data_dir_isolates_under_env_override(tmp_path, monkeypatch):
     import importlib
 
     import app.path_helper as ph
+
     importlib.reload(ph)
     assert ph.get_app_data_dir() == target
     assert target.exists()
 
 
 def test_spec_bundles_i18n_json(spec_source):
-    assert 'app/i18n/*.json' in spec_source, "i18n JSON files not bundled in datas"
+    assert "app/i18n/*.json" in spec_source, "i18n JSON files not bundled in datas"
 
 
 def test_spec_declares_critical_hidden_imports(spec_source):
@@ -97,8 +100,9 @@ def test_spec_does_not_exclude_runtime_dependencies(spec_source):
     excludes_block = match.group(1)
     must_not_exclude = ["fitz", "PIL", "PySide6", "app\\."]
     for token in must_not_exclude:
-        assert not re.search(r"['\"]" + token, excludes_block), \
+        assert not re.search(r"['\"]" + token, excludes_block), (
             f"Runtime dependency {token!r} incorrectly listed in excludes"
+        )
 
 
 def test_all_app_modules_or_explicitly_excluded():

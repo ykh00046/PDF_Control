@@ -1,4 +1,5 @@
 """Text + image watermark operations and controller integration (watermark PDCA)."""
+
 import fitz
 import pytest
 
@@ -19,9 +20,7 @@ def _make_logo(tmp_path):
 
 
 def _page_text(doc):
-    return "".join(
-        doc[i].get_text() for i in range(doc.page_count)
-    ).replace("\n", "").replace("\xa0", " ")
+    return "".join(doc[i].get_text() for i in range(doc.page_count)).replace("\n", "").replace("\xa0", " ")
 
 
 def test_watermark_apply_renders_text(tmp_path):
@@ -83,6 +82,7 @@ def test_preview_save_equivalence_watermark(tmp_path):
 
 # ── controller scope (current vs all pages) ──────────────────────────
 
+
 @pytest.fixture
 def three_page_pdf(tmp_path):
     path = tmp_path / "three.pdf"
@@ -137,6 +137,7 @@ def test_add_watermark_single_page(three_page_pdf, tmp_path):
 
 # ── dialog (settings emission + empty-text guard) ────────────────────
 
+
 def test_dialog_emits_settings(qtbot):
     from app.watermark_dialog import WatermarkDialog
 
@@ -175,6 +176,7 @@ def test_dialog_empty_text_rejected(qtbot):
 
 
 # ── image watermark (image-watermark PDCA) ───────────────────────────
+
 
 def test_image_watermark_renders(tmp_path):
     logo = _make_logo(tmp_path)
@@ -225,10 +227,7 @@ def test_add_image_watermark_all_pages(three_page_pdf, tmp_path):
     try:
         all_indices = list(range(controller.session.doc.page_count))
         assert controller.add_image_watermark(all_indices, logo) is True
-        img_ops = [
-            op for op in controller.session.history
-            if isinstance(op, WatermarkImage)
-        ]
+        img_ops = [op for op in controller.session.history if isinstance(op, WatermarkImage)]
         assert len(img_ops) == 3
 
         out = str(tmp_path / "all_imgwm.pdf")

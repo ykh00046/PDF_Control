@@ -7,6 +7,7 @@ without a GUI or a real document. Consumed by
 Encryption is a *save-time* concern, orthogonal to the operation/history model;
 it never becomes an :class:`~app.operations.base.Operation`.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -23,12 +24,7 @@ PERM_ANNOTATE: int = fitz.PDF_PERM_ANNOTATE
 # Permissions always granted regardless of the UI toggles. Keeping these on
 # preserves accessibility (screen readers), page assembly, form filling, and
 # high-quality printing so a protected file stays usable.
-_BASE_PERMS: int = (
-    fitz.PDF_PERM_ACCESSIBILITY
-    | fitz.PDF_PERM_ASSEMBLE
-    | fitz.PDF_PERM_FORM
-    | fitz.PDF_PERM_PRINT_HQ
-)
+_BASE_PERMS: int = fitz.PDF_PERM_ACCESSIBILITY | fitz.PDF_PERM_ASSEMBLE | fitz.PDF_PERM_FORM | fitz.PDF_PERM_PRINT_HQ
 
 # AES-256 is the strongest method PyMuPDF exposes.
 ENCRYPT_METHOD: int = fitz.PDF_ENCRYPT_AES_256
@@ -69,12 +65,7 @@ class EncryptionSettings:
 
     def is_active(self) -> bool:
         """True when any protection (a password or a restriction) is requested."""
-        all_allowed = (
-            self.allow_print
-            and self.allow_copy
-            and self.allow_modify
-            and self.allow_annotate
-        )
+        all_allowed = self.allow_print and self.allow_copy and self.allow_modify and self.allow_annotate
         return bool(self.user_password or self.owner_password) or not all_allowed
 
     def permission_flags(self) -> int:

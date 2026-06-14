@@ -5,6 +5,7 @@ groups. Keeping this separate from :mod:`app.document_session` lets the logic
 be unit-tested in isolation and type-checked under mypy ``strict`` (the
 session module is exempt for now — see ``typing-legacy-core``).
 """
+
 from __future__ import annotations
 
 from enum import Enum
@@ -14,9 +15,9 @@ from typing import List, Optional
 class SplitMode(str, Enum):
     """How a document should be divided into output files."""
 
-    SINGLE = "single"      # one file per page
-    EVERY_N = "every_n"    # one file per N consecutive pages
-    RANGES = "ranges"      # one file per user-specified range group
+    SINGLE = "single"  # one file per page
+    EVERY_N = "every_n"  # one file per N consecutive pages
+    RANGES = "ranges"  # one file per user-specified range group
 
 
 def parse_page_ranges(spec: str, page_count: int) -> List[List[int]]:
@@ -116,10 +117,7 @@ def compute_split_groups(
     if mode == SplitMode.EVERY_N:
         if every_n is None or every_n < 1:
             raise ValueError("every_n must be >= 1 for EVERY_N split")
-        return [
-            list(range(start, min(start + every_n, page_count)))
-            for start in range(0, page_count, every_n)
-        ]
+        return [list(range(start, min(start + every_n, page_count))) for start in range(0, page_count, every_n)]
 
     if mode == SplitMode.RANGES:
         if ranges_spec is None:

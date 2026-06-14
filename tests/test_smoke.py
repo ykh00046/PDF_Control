@@ -1,4 +1,3 @@
-
 import fitz
 import pytest
 
@@ -23,6 +22,7 @@ def sample_pdf(tmp_path):
 
     return sample_path
 
+
 @pytest.fixture
 def multi_page_pdf(tmp_path):
     """Creates a multi-page PDF for testing."""
@@ -46,6 +46,7 @@ def multi_page_pdf(tmp_path):
     doc.close()
 
     return pdf_path
+
 
 def test_pdf_redaction_and_replacement_with_custom_font(sample_pdf, tmp_path):
     """
@@ -98,14 +99,13 @@ def test_pdf_redaction_and_replacement_with_custom_font(sample_pdf, tmp_path):
 
         # Check if any embedded font's name contains the original font name
         for font_info in page_fonts:
-            font_name_in_pdf = font_info[3] # Base font name
+            font_name_in_pdf = font_info[3]  # Base font name
             if "comic" in font_name_in_pdf.lower():
                 embedded_font_found = True
                 break
 
         assert embedded_font_found, (
-            f"Custom font '{font_name}' was not embedded correctly. "
-            f"Fonts found: {[f[3] for f in page_fonts]}"
+            f"Custom font '{font_name}' was not embedded correctly. Fonts found: {[f[3] for f in page_fonts]}"
         )
         print(f"Test successful: {output_path} verified with custom font embedding.")
 

@@ -3,6 +3,7 @@
 Returns an :class:`~app.encryption.EncryptionSettings`; the actual save-time
 encryption is handled by the save path (see ``app.encryption``).
 """
+
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -48,8 +49,7 @@ class EncryptionDialog(QDialog):
         self.user_pw_confirm = QLineEdit()
         self.owner_pw = QLineEdit()
         self.owner_pw_confirm = QLineEdit()
-        for field in (self.user_pw, self.user_pw_confirm,
-                      self.owner_pw, self.owner_pw_confirm):
+        for field in (self.user_pw, self.user_pw_confirm, self.owner_pw, self.owner_pw_confirm):
             field.setEchoMode(QLineEdit.Password)
 
         grid.addWidget(QLabel(tr("dialog.encrypt.user_pw")), 0, 0)
@@ -74,8 +74,7 @@ class EncryptionDialog(QDialog):
         self.allow_copy.setChecked(ENCRYPTION_DEFAULT_ALLOW_COPY)
         self.allow_modify.setChecked(ENCRYPTION_DEFAULT_ALLOW_MODIFY)
         self.allow_annotate.setChecked(ENCRYPTION_DEFAULT_ALLOW_ANNOTATE)
-        for box in (self.allow_print, self.allow_copy,
-                    self.allow_modify, self.allow_annotate):
+        for box in (self.allow_print, self.allow_copy, self.allow_modify, self.allow_annotate):
             perm_layout.addWidget(box)
         perm_group.setLayout(perm_layout)
         layout.addWidget(perm_group)
@@ -93,8 +92,7 @@ class EncryptionDialog(QDialog):
 
     def _on_accept(self):
         """Validate password/confirm pairs before accepting."""
-        if self.user_pw.text() != self.user_pw_confirm.text() or \
-                self.owner_pw.text() != self.owner_pw_confirm.text():
+        if self.user_pw.text() != self.user_pw_confirm.text() or self.owner_pw.text() != self.owner_pw_confirm.text():
             QMessageBox.warning(
                 self,
                 tr("dialog.encrypt.title"),

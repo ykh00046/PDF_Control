@@ -7,6 +7,7 @@ toolbar can reuse them.
 ``ShortcutBuilder.build()`` registers the global keyboard shortcuts that are
 not bound to menu entries (Del, Ctrl+R, Page Up/Down, F1).
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -110,9 +111,7 @@ class MenuBuilder:
         win.fit_to_width_action.triggered.connect(win.viewer.fit_to_width)
         view_menu.addAction(win.fit_to_width_action)
 
-        win.toggle_history_action = QAction(
-            tr("menu.view.history_toggle"), win, checkable=True
-        )
+        win.toggle_history_action = QAction(tr("menu.view.history_toggle"), win, checkable=True)
         win.toggle_history_action.setChecked(win.history_dock.isVisible())
         win.toggle_history_action.toggled.connect(win._toggle_history_panel)
         view_menu.addAction(win.toggle_history_action)
@@ -194,6 +193,4 @@ class ShortcutBuilder:
         help_shortcut = QShortcut(QKeySequence(Qt.Key_F1), win)
         help_shortcut.activated.connect(win.show_help)
 
-        win.logger.info(
-            "Keyboard shortcuts initialized: Del, Ctrl+R, PageUp/Down, F1"
-        )
+        win.logger.info("Keyboard shortcuts initialized: Del, Ctrl+R, PageUp/Down, F1")

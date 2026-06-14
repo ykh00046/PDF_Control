@@ -4,6 +4,7 @@ Collects text + style (font size, color, opacity, angle) and scope
 (current vs all pages), emitting a settings dict for the handler to turn
 into WatermarkText operations.
 """
+
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
@@ -61,9 +62,7 @@ class WatermarkDialog(QDialog):
         self.opacity_slider.setRange(10, 100)
         self.opacity_slider.setValue(30)
         self.opacity_value = QLabel("30%")
-        self.opacity_slider.valueChanged.connect(
-            lambda v: self.opacity_value.setText(f"{v}%")
-        )
+        self.opacity_slider.valueChanged.connect(lambda v: self.opacity_value.setText(f"{v}%"))
         op_row.addWidget(self.opacity_slider)
         op_row.addWidget(self.opacity_value)
         layout.addLayout(op_row)
@@ -126,12 +125,14 @@ class WatermarkDialog(QDialog):
             get_logger().info("Watermark dialog: empty text, cancelled")
             self.reject()
             return
-        self.watermark_confirmed.emit({
-            "text": text,
-            "fontsize": float(self.size_spin.value()),
-            "color": self._color,
-            "opacity": self.opacity_slider.value() / 100.0,
-            "angle": self.angle_spin.value(),
-            "all_pages": self.scope_all.isChecked(),
-        })
+        self.watermark_confirmed.emit(
+            {
+                "text": text,
+                "fontsize": float(self.size_spin.value()),
+                "color": self._color,
+                "opacity": self.opacity_slider.value() / 100.0,
+                "angle": self.angle_spin.value(),
+                "all_pages": self.scope_all.isChecked(),
+            }
+        )
         self.accept()

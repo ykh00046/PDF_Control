@@ -9,6 +9,7 @@ should prefer ``WarningReport`` over re-implementing the same loops.
 both legacy properties (``text_shrink_count`` etc.) and a ``report`` property
 returning a fresh :class:`WarningReport`.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -19,9 +20,9 @@ from typing import Any, Dict, List
 class OpWarning:
     """Structured warning for a single operation-level fit issue."""
 
-    op_index: int                    # index in the per-page operations list
-    severity: str                    # "info" | "warn" | "error"
-    code: str                        # e.g. "text.shrunk", "text.overflow"
+    op_index: int  # index in the per-page operations list
+    severity: str  # "info" | "warn" | "error"
+    code: str  # e.g. "text.shrunk", "text.overflow"
     detail: Dict[str, Any] = field(default_factory=dict)
 
 

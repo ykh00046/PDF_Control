@@ -5,6 +5,7 @@ the page content without removing anything, so the SAVE and PREVIEW paths
 share the same apply() (no mode-specific branch). Rendered via TextWriter +
 a morph matrix because insert_textbox only supports 90-degree rotations.
 """
+
 import os
 from typing import Any, Dict, Tuple
 
@@ -29,9 +30,9 @@ class WatermarkText(Operation):
         super().__init__(page_index, [])  # watermark uses no selection rects
         self.text = text
         self.fontsize = fontsize
-        self.color = color      # RGB tuple, 0-1
+        self.color = color  # RGB tuple, 0-1
         self.opacity = opacity  # 0-1 (1 = opaque)
-        self.angle = angle      # degrees, counter-clockwise
+        self.angle = angle  # degrees, counter-clockwise
 
     def apply(self, page: fitz.Page) -> None:
         """Draw the watermark centered on the page, rotated by ``angle``."""
@@ -46,20 +47,24 @@ class WatermarkText(Operation):
         # morph then rotates the whole run about that same pivot.
         writer.append(
             (center_x - text_width / 2, center_y),
-            self.text, font=font, fontsize=self.fontsize,
+            self.text,
+            font=font,
+            fontsize=self.fontsize,
         )
         pivot = fitz.Point(center_x, center_y)
         writer.write_text(page, morph=(pivot, fitz.Matrix(self.angle)))
 
     def to_dict(self) -> Dict[str, Any]:
         data = super().to_dict()
-        data.update({
-            "text": self.text,
-            "fontsize": self.fontsize,
-            "color": list(self.color),
-            "opacity": self.opacity,
-            "angle": self.angle,
-        })
+        data.update(
+            {
+                "text": self.text,
+                "fontsize": self.fontsize,
+                "color": list(self.color),
+                "opacity": self.opacity,
+                "angle": self.angle,
+            }
+        )
         return data
 
 
@@ -81,9 +86,9 @@ class WatermarkImage(Operation):
     ) -> None:
         super().__init__(page_index, [])  # no selection rects
         self.image_path = image_path
-        self.opacity = opacity   # 0-1
-        self.scale = scale       # fraction of page WIDTH
-        self.rotate = rotate     # 0/90/180/270 (insert_image limitation)
+        self.opacity = opacity  # 0-1
+        self.scale = scale  # fraction of page WIDTH
+        self.rotate = rotate  # 0/90/180/270 (insert_image limitation)
 
     def apply(self, page: fitz.Page) -> None:
         """Draw the image centered on the page at ``scale`` * page width.
@@ -108,17 +113,21 @@ class WatermarkImage(Operation):
         target_h = target_w * pix.height / pix.width
         cx, cy = page.rect.width / 2, page.rect.height / 2
         rect = fitz.Rect(
-            cx - target_w / 2, cy - target_h / 2,
-            cx + target_w / 2, cy + target_h / 2,
+            cx - target_w / 2,
+            cy - target_h / 2,
+            cx + target_w / 2,
+            cy + target_h / 2,
         )
         page.insert_image(rect, pixmap=pix, keep_proportion=True, rotate=self.rotate)
 
     def to_dict(self) -> Dict[str, Any]:
         data = super().to_dict()
-        data.update({
-            "image_path": self.image_path,
-            "opacity": self.opacity,
-            "scale": self.scale,
-            "rotate": self.rotate,
-        })
+        data.update(
+            {
+                "image_path": self.image_path,
+                "opacity": self.opacity,
+                "scale": self.scale,
+                "rotate": self.rotate,
+            }
+        )
         return data

@@ -4,6 +4,7 @@ Owns three persistent widgets (font info label, warning indicator button,
 page info label) and the methods that refresh them in response to viewer
 and controller signals.
 """
+
 from __future__ import annotations
 
 import os
@@ -42,9 +43,7 @@ class StatusBarManager:
         self._warning_indicator = QToolButton(win)
         self._warning_indicator.setAutoRaise(True)
         self._warning_indicator.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        self._warning_indicator.setIcon(
-            win.style().standardIcon(QStyle.SP_MessageBoxWarning)
-        )
+        self._warning_indicator.setIcon(win.style().standardIcon(QStyle.SP_MessageBoxWarning))
         self._warning_indicator.setVisible(False)
         self._warning_indicator.clicked.connect(self.show_warning_details)
         win.statusBar().addPermanentWidget(self._warning_indicator)
@@ -64,20 +63,13 @@ class StatusBarManager:
             self._warning_indicator.setVisible(False)
             return
         total = sum(
-            1
-            for ws in session.last_preview_warnings.values()
-            for w in ws
-            if w.get("severity") in ("warn", "error")
+            1 for ws in session.last_preview_warnings.values() for w in ws if w.get("severity") in ("warn", "error")
         )
         if total == 0:
             self._warning_indicator.setVisible(False)
             return
         has_error = session.has_blocking_warnings()
-        icon_enum = (
-            QStyle.SP_MessageBoxCritical
-            if has_error
-            else QStyle.SP_MessageBoxWarning
-        )
+        icon_enum = QStyle.SP_MessageBoxCritical if has_error else QStyle.SP_MessageBoxWarning
         self._warning_indicator.setIcon(win.style().standardIcon(icon_enum))
         self._warning_indicator.setText(tr("warn.indicator.label", total))
         self._warning_indicator.setToolTip(tr("warn.indicator.tooltip"))
@@ -129,9 +121,7 @@ class StatusBarManager:
             page_num = win.viewer.current_page_index + 1
             total = win.controller.session.doc.page_count
             zoom_pct = int(win.viewer.zoom_level * 100)
-            self._page_info.setText(
-                tr("status.page_info", page_num, total, zoom_pct)
-            )
+            self._page_info.setText(tr("status.page_info", page_num, total, zoom_pct))
 
             # Sync page spinbox (block signals to avoid recursion)
             win.page_spinbox.blockSignals(True)

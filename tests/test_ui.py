@@ -26,6 +26,7 @@ def main_window(qtbot):
     qtbot.addWidget(window)
     return window
 
+
 def test_open_file(main_window, qtbot, sample_pdf):
     with patch.object(QFileDialog, "getOpenFileName", return_value=(sample_pdf, "PDF Files (*.pdf)")):
         main_window.open_file()

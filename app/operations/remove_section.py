@@ -5,6 +5,7 @@ The previously ~160-line ``apply()`` is decomposed into single-responsibility
 helpers; behavior (memory guards, DPI auto-cap, colorspace handling, page
 rebuild) is preserved exactly.
 """
+
 from io import BytesIO
 from typing import TYPE_CHECKING, Any, Dict, List, Tuple, cast
 
@@ -55,25 +56,16 @@ class RemoveSectionAsImage(Operation):
         expected_height_px = int((page_rect.height - self.remove_rect.height) * zoom)
 
         # RGBA(4 bytes/px) 기준으로 안전하게 추정
-        estimated_memory_mb = (
-            expected_width_px * expected_height_px * RGBA_BYTES_PER_PIXEL
-        ) / BYTES_PER_MIB
+        estimated_memory_mb = (expected_width_px * expected_height_px * RGBA_BYTES_PER_PIXEL) / BYTES_PER_MIB
 
         limits = _memory_limits()
         max_memory_mb = limits.get("remove_section_dpi_cap_mb", 500)
         large_warn_mb = limits.get("remove_section_large_warn_mb", 100)
         if estimated_memory_mb > max_memory_mb:
-            safe_zoom = (
-                max_memory_mb
-                * BYTES_PER_MIB
-                * PDF_POINTS_PER_INCH
-                * PDF_POINTS_PER_INCH
-            ) / (
-                page_rect.width
-                * (page_rect.height - self.remove_rect.height)
-                * RGBA_BYTES_PER_PIXEL
+            safe_zoom = (max_memory_mb * BYTES_PER_MIB * PDF_POINTS_PER_INCH * PDF_POINTS_PER_INCH) / (
+                page_rect.width * (page_rect.height - self.remove_rect.height) * RGBA_BYTES_PER_PIXEL
             )
-            safe_zoom = safe_zoom ** 0.5
+            safe_zoom = safe_zoom**0.5
             safe_dpi = int(safe_zoom * PDF_POINTS_PER_INCH)
 
             logger.warning(
@@ -158,16 +150,14 @@ class RemoveSectionAsImage(Operation):
         return buf.getvalue()
 
     # ── 6. 페이지 재생성 ───────────────────────────────────────────
-    def _rebuild_page(self, doc: fitz.Document, page_idx: int, page_rect: fitz.Rect,
-                      combined: "PILImage", zoom: float) -> float:
+    def _rebuild_page(
+        self, doc: fitz.Document, page_idx: int, page_rect: fitz.Rect, combined: "PILImage", zoom: float
+    ) -> float:
         """원본 위치에 이미지 1장짜리 새 페이지를 만들고 원본을 삭제. 새 높이(pt) 반환."""
         new_height_pt = combined.height / zoom
         # new_page()가 자동으로 올바른 MediaBox 설정
         new_page = doc.new_page(page_idx, width=page_rect.width, height=new_height_pt)
-        new_page.insert_image(
-            fitz.Rect(0, 0, page_rect.width, new_height_pt),
-            stream=self._encode(combined)
-        )
+        new_page.insert_image(fitz.Rect(0, 0, page_rect.width, new_height_pt), stream=self._encode(combined))
         doc.delete_page(page_idx + 1)  # 한 칸 밀린 원본 삭제
         return new_height_pt
 
@@ -192,10 +182,11 @@ class RemoveSectionAsImage(Operation):
 
     def to_dict(self) -> Dict[str, Any]:
         data = super().to_dict()
-        data.update({
-            "remove_rect": [self.remove_rect.x0, self.remove_rect.y0,
-                            self.remove_rect.x1, self.remove_rect.y1],
-            "dpi": self.dpi,
-            "format": self.format
-        })
+        data.update(
+            {
+                "remove_rect": [self.remove_rect.x0, self.remove_rect.y0, self.remove_rect.x1, self.remove_rect.y1],
+                "dpi": self.dpi,
+                "format": self.format,
+            }
+        )
         return data

@@ -2,6 +2,7 @@
 
 Split out of the former monolithic ``app/model.py`` (model-restructure).
 """
+
 from typing import Any, Dict, List, Optional, Tuple
 
 import fitz
@@ -26,10 +27,19 @@ class RedactDelete(Operation):
 class RedactReplace(Operation):
     """Represents a redaction operation to replace content with new text."""
 
-    def __init__(self, page_index: int, rects: List[fitz.Rect], new_text: str,
-                 fontname: str = "helv", fontsize: float = 0, align: int = 0,
-                 fontfile: Optional[str] = None, color: Optional[Tuple[float, float, float]] = None,
-                 font_flags: int = 0, wrap: Optional[bool] = None) -> None:
+    def __init__(
+        self,
+        page_index: int,
+        rects: List[fitz.Rect],
+        new_text: str,
+        fontname: str = "helv",
+        fontsize: float = 0,
+        align: int = 0,
+        fontfile: Optional[str] = None,
+        color: Optional[Tuple[float, float, float]] = None,
+        font_flags: int = 0,
+        wrap: Optional[bool] = None,
+    ) -> None:
         super().__init__(page_index, rects)
         self.new_text = new_text
         self.fontname = fontname
@@ -50,14 +60,16 @@ class RedactReplace(Operation):
 
     def to_dict(self) -> Dict[str, Any]:
         data = super().to_dict()
-        data.update({
-            "new_text": self.new_text,
-            "fontname": self.fontname,
-            "fontsize": self.fontsize,
-            "align": self.align,
-            "fontfile": self.fontfile,
-            "color": list(self.color) if self.color else None,
-            "font_flags": self.font_flags,
-            "wrap": self.wrap
-        })
+        data.update(
+            {
+                "new_text": self.new_text,
+                "fontname": self.fontname,
+                "fontsize": self.fontsize,
+                "align": self.align,
+                "fontfile": self.fontfile,
+                "color": list(self.color) if self.color else None,
+                "font_flags": self.font_flags,
+                "wrap": self.wrap,
+            }
+        )
         return data

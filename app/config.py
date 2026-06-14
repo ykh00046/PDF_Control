@@ -52,28 +52,21 @@ TEXT_METADATA_MAX_FONT_SIZE = 72
 # Wrapping preserves readability; shrinking is kept only as a fallback for
 # cases where wrapping cannot help (an unbreakable word wider than the box, or
 # not enough vertical room before the page edge).
-TEXT_WRAP_ENABLED = True            # master switch for the wrap-first policy
+TEXT_WRAP_ENABLED = True  # master switch for the wrap-first policy
 TEXT_WRAP_LINE_HEIGHT_FACTOR = 1.2  # line height = fontsize * this factor
-TEXT_WRAP_BOTTOM_MARGIN = 4.0       # keep at least this gap (pt) from page bottom
+TEXT_WRAP_BOTTOM_MARGIN = 4.0  # keep at least this gap (pt) from page bottom
 
 DEFAULT_CONFIG = {
-    "window": {
-        "width": 1200,
-        "height": 800,
-        "x": 100,
-        "y": 100
-    },
+    "window": {"width": 1200, "height": 800, "x": 100, "y": 100},
     "last_directory": "",
     "zoom_level": 1.0,
-    "ui": {
-        "history_panel_visible": True
-    },
+    "ui": {"history_panel_visible": True},
     "memory": {
         "remove_section_dpi_cap_mb": 500,
         "remove_section_large_warn_mb": 100,
         "merge_warn_mb": 50,
-        "merge_abort_mb": 200
-    }
+        "merge_abort_mb": 200,
+    },
 }
 
 

@@ -112,7 +112,7 @@ class OperationApplicator:
         self,
         page: fitz.Page,
         operations: List[Any],  # List[Operation], but avoiding circular import
-        mode: ApplyMode = ApplyMode.SAVE
+        mode: ApplyMode = ApplyMode.SAVE,
     ) -> ApplyResult:
         """
         Apply operations to a page using multi-pass approach.
@@ -142,9 +142,7 @@ class OperationApplicator:
         if not operations:
             return result
 
-        self.logger.debug(
-            f"Applying {len(operations)} operations in {mode.value} mode"
-        )
+        self.logger.debug(f"Applying {len(operations)} operations in {mode.value} mode")
 
         warnings: List[OpWarning] = []
 
@@ -152,8 +150,7 @@ class OperationApplicator:
         self._apply_crop_operations(page, operations)
 
         # Filter redaction operations
-        redactions = [op for op in operations
-                      if isinstance(op, (RedactDelete, RedactReplace))]
+        redactions = [op for op in operations if isinstance(op, (RedactDelete, RedactReplace))]
 
         if redactions:
             # Pre-Pass 1: Extract source text metadata (size/color/font/baseline).
@@ -179,9 +176,7 @@ class OperationApplicator:
             resolved_fonts = self._register_fonts(page, resolved_fonts, font_sizes)
 
             # Pass 3: Insert replacement text
-            self._insert_replacement_text(
-                page, redactions, resolved_fonts, font_sizes, mode, warnings
-            )
+            self._insert_replacement_text(page, redactions, resolved_fonts, font_sizes, mode, warnings)
 
         # Pass 4: Section removal. In preview this is still safe because the
         # viewer renders against a detached temporary single-page document.
@@ -200,11 +195,7 @@ class OperationApplicator:
 
         return result
 
-    def _apply_crop_operations(
-        self,
-        page: fitz.Page,
-        operations: List[Any]
-    ) -> None:
+    def _apply_crop_operations(self, page: fitz.Page, operations: List[Any]) -> None:
         """
         Apply CropMargins operations to the page.
 
@@ -213,10 +204,7 @@ class OperationApplicator:
         for op in operations:
             if isinstance(op, CropMargins):
                 op.apply(page)
-                self.logger.debug(
-                    f"Applied crop: top={op.top}, bottom={op.bottom}, "
-                    f"left={op.left}, right={op.right}"
-                )
+                self.logger.debug(f"Applied crop: top={op.top}, bottom={op.bottom}, left={op.left}, right={op.right}")
 
     def _prepare_fonts(
         self,
@@ -258,13 +246,9 @@ class OperationApplicator:
             if op.fontfile and os.path.exists(op.fontfile):
                 fontfile = op.fontfile
             else:
-                fontfile = resolve_pdf_fontname(
-                    source_fontname, source_flags, must_cover=op.new_text
-                )
+                fontfile = resolve_pdf_fontname(source_fontname, source_flags, must_cover=op.new_text)
                 if fontfile is None:
-                    fontbuffer = extract_embedded_font(
-                        page, source_fontname, must_cover=op.new_text
-                    )
+                    fontbuffer = extract_embedded_font(page, source_fontname, must_cover=op.new_text)
 
             if fontfile:
                 # Use base filename as alias (e.g., "arial" from "arial.ttf")
@@ -303,31 +287,19 @@ class OperationApplicator:
             try:
                 # Check if font is already registered on this page
                 # (files surface as their basefont, buffers as the alias).
-                is_embedded = any(
-                    entry[3] == alias or entry[4] == alias
-                    for entry in page.get_fonts(full=True)
-                )
+                is_embedded = any(entry[3] == alias or entry[4] == alias for entry in page.get_fonts(full=True))
 
                 if not is_embedded:
                     if fontfile:
                         page.insert_font(fontname=alias, fontfile=fontfile)
-                        self.logger.debug(
-                            f"Embedded font '{fontfile}' with alias '{alias}'"
-                        )
+                        self.logger.debug(f"Embedded font '{fontfile}' with alias '{alias}'")
                     else:
                         page.insert_font(fontname=alias, fontbuffer=fontbuffer)
-                        self.logger.debug(
-                            f"Registered embedded source font as '{alias}'"
-                        )
+                        self.logger.debug(f"Registered embedded source font as '{alias}'")
                 else:
-                    self.logger.debug(
-                        f"Font '{alias}' already present on page {page.number}"
-                    )
+                    self.logger.debug(f"Font '{alias}' already present on page {page.number}")
             except (OSError, IOError, RuntimeError) as e:
-                self.logger.error(
-                    f"Font embedding failed for alias '{alias}': {e}. "
-                    f"Falling back to default."
-                )
+                self.logger.error(f"Font embedding failed for alias '{alias}': {e}. Falling back to default.")
                 meta = text_metadata.get(i)
                 fallback_name = meta["fontname"] if meta else "helv"
                 fallback_flags = meta["font_flags"] if meta else 0
@@ -338,11 +310,7 @@ class OperationApplicator:
                 )
         return registered
 
-    def _calculate_font_sizes(
-        self,
-        page: fitz.Page,
-        operations: List[Any]
-    ) -> Dict[int, TextMetadata]:
+    def _calculate_font_sizes(self, page: fitz.Page, operations: List[Any]) -> Dict[int, TextMetadata]:
         """
         Build per-operation text metadata (fontsize, color, flags, fontname).
 
@@ -387,11 +355,7 @@ class OperationApplicator:
 
         return metadata_map
 
-    def _apply_redactions_destructive(
-        self,
-        page: fitz.Page,
-        operations: List[Any]
-    ) -> None:
+    def _apply_redactions_destructive(self, page: fitz.Page, operations: List[Any]) -> None:
         """
         Apply redactions destructively (for save mode).
 
@@ -409,15 +373,9 @@ class OperationApplicator:
         # Apply all redactions at once (permanent removal)
         page.apply_redactions()
 
-        self.logger.debug(
-            f"Applied {len(operations)} redactions (destructive)"
-        )
+        self.logger.debug(f"Applied {len(operations)} redactions (destructive)")
 
-    def _apply_redactions_preview(
-        self,
-        page: fitz.Page,
-        operations: List[Any]
-    ) -> None:
+    def _apply_redactions_preview(self, page: fitz.Page, operations: List[Any]) -> None:
         """
         Apply redactions non-destructively (for preview mode).
 
@@ -434,9 +392,7 @@ class OperationApplicator:
                 # Draw white rectangle to hide existing content
                 page.draw_rect(rect, fill=(1, 1, 1), color=None)
 
-        self.logger.debug(
-            f"Applied {len(operations)} redactions (non-destructive preview)"
-        )
+        self.logger.debug(f"Applied {len(operations)} redactions (non-destructive preview)")
 
     def _insert_replacement_text(
         self,
@@ -469,9 +425,7 @@ class OperationApplicator:
             final_fontsize = meta["fontsize"]
             text_color = meta["color"]
             font_flags = meta["font_flags"]
-            font_alias, fontfile, fontbuffer = resolved_fonts.get(
-                i, (meta["fontname"], op.fontfile, None)
-            )
+            font_alias, fontfile, fontbuffer = resolved_fonts.get(i, (meta["fontname"], op.fontfile, None))
 
             # In preview mode, use slightly gray color if black is selected
             if mode == ApplyMode.PREVIEW and text_color == TEXT_DEFAULT_COLOR:
@@ -485,9 +439,14 @@ class OperationApplicator:
             # Insert text for each rectangle
             for rect in op.rects:
                 self._insert_text_with_autofit(
-                    page, rect, op.new_text,
-                    font_alias, final_fontsize,
-                    fontfile, text_color, font_flags,
+                    page,
+                    rect,
+                    op.new_text,
+                    font_alias,
+                    final_fontsize,
+                    fontfile,
+                    text_color,
+                    font_flags,
                     op_index=i,
                     warnings=warnings,
                     wrap_enabled=wrap_enabled,
@@ -583,11 +542,16 @@ class OperationApplicator:
                 references the alias that ``_prepare_fonts`` registered on
                 this page via ``insert_font(fontbuffer=)``.
         """
-        expanded_rect, final_fontsize, wrapped_lines, autofit_shrunk = (
-            self._compute_text_layout(
-                page, rect, text, fontname, initial_fontsize, fontfile,
-                wrap_enabled, baseline, fontbuffer,
-            )
+        expanded_rect, final_fontsize, wrapped_lines, autofit_shrunk = self._compute_text_layout(
+            page,
+            rect,
+            text,
+            fontname,
+            initial_fontsize,
+            fontfile,
+            wrap_enabled,
+            baseline,
+            fontbuffer,
         )
 
         # Try insert_textbox for better layout handling. A buffer-based font
@@ -608,9 +572,14 @@ class OperationApplicator:
         # Fallback: shrink if didn't fit
         if result < 0:
             self._insert_with_shrink(
-                page, expanded_rect, text,
-                fontname, final_fontsize,
-                fontfile, color, rect,
+                page,
+                expanded_rect,
+                text,
+                fontname,
+                final_fontsize,
+                fontfile,
+                color,
+                rect,
                 op_index=op_index,
                 warnings=warnings,
             )
@@ -618,31 +587,35 @@ class OperationApplicator:
             # autofit already brought the text inside the box by reducing the
             # font size; surface that as a non-blocking shrink warning so the
             # user knows the replacement was scaled down.
-            warnings.append(OpWarning(
-                op_index=op_index,
-                severity="warn",
-                code="text.shrunk",
-                detail={
-                    "fontsize_from": round(initial_fontsize, 2),
-                    "fontsize_to": round(final_fontsize, 2),
-                    "text_len": len(text),
-                    "rect": (rect.x0, rect.y0, rect.x1, rect.y1),
-                },
-            ))
+            warnings.append(
+                OpWarning(
+                    op_index=op_index,
+                    severity="warn",
+                    code="text.shrunk",
+                    detail={
+                        "fontsize_from": round(initial_fontsize, 2),
+                        "fontsize_to": round(final_fontsize, 2),
+                        "text_len": len(text),
+                        "rect": (rect.x0, rect.y0, rect.x1, rect.y1),
+                    },
+                )
+            )
         elif wrapped_lines > 1 and warnings is not None:
             # Text was preserved at its intended size by wrapping onto multiple
             # lines. This is a successful, non-blocking outcome (info severity).
-            warnings.append(OpWarning(
-                op_index=op_index,
-                severity="info",
-                code="text.wrapped",
-                detail={
-                    "lines": wrapped_lines,
-                    "fontsize": round(final_fontsize, 2),
-                    "text_len": len(text),
-                    "rect": (rect.x0, rect.y0, rect.x1, rect.y1),
-                },
-            ))
+            warnings.append(
+                OpWarning(
+                    op_index=op_index,
+                    severity="info",
+                    code="text.wrapped",
+                    detail={
+                        "lines": wrapped_lines,
+                        "fontsize": round(final_fontsize, 2),
+                        "text_len": len(text),
+                        "rect": (rect.x0, rect.y0, rect.x1, rect.y1),
+                    },
+                )
+            )
 
     def _compute_text_layout(
         self,
@@ -679,7 +652,8 @@ class OperationApplicator:
         """
         # Expand rect for better fit
         expanded_rect = fitz.Rect(
-            rect.x0, rect.y0,
+            rect.x0,
+            rect.y0,
             rect.x1 + TEXT_BOX_X_PADDING,
             rect.y1 + TEXT_BOX_Y_PADDING,
         )
@@ -706,8 +680,12 @@ class OperationApplicator:
             if fit_font.text_length(text, fontsize=initial_fontsize) > target_width:
                 wrapped_rect = (
                     self._grow_rect_for_wrap(
-                        page, fit_font, expanded_rect, text,
-                        initial_fontsize, target_width,
+                        page,
+                        fit_font,
+                        expanded_rect,
+                        text,
+                        initial_fontsize,
+                        target_width,
                     )
                     if wrap_enabled
                     else None
@@ -716,9 +694,7 @@ class OperationApplicator:
                     expanded_rect, wrapped_lines = wrapped_rect
                 else:
                     # --- Fallback: width-based font shrink via binary search ---
-                    final_fontsize = self._shrink_fontsize_to_width(
-                        fit_font, text, initial_fontsize, target_width
-                    )
+                    final_fontsize = self._shrink_fontsize_to_width(fit_font, text, initial_fontsize, target_width)
                     autofit_shrunk = True
 
             # --- Baseline anchoring (text-fidelity) ---
@@ -731,13 +707,14 @@ class OperationApplicator:
                 anchored_y1 = expanded_rect.y1 + dy
                 if anchored_y0 >= 0.0 and anchored_y1 <= page.rect.y1:
                     expanded_rect = fitz.Rect(
-                        expanded_rect.x0, anchored_y0,
-                        expanded_rect.x1, anchored_y1,
+                        expanded_rect.x0,
+                        anchored_y0,
+                        expanded_rect.x1,
+                        anchored_y1,
                     )
         except (RuntimeError, ValueError, TypeError, FileNotFoundError) as exc:
             self.logger.warning(
-                "Text autofit calculation failed; using initial fontsize "
-                f"{initial_fontsize:.2f}pt: {exc}"
+                f"Text autofit calculation failed; using initial fontsize {initial_fontsize:.2f}pt: {exc}"
             )
 
         return expanded_rect, final_fontsize, wrapped_lines, autofit_shrunk
@@ -759,9 +736,7 @@ class OperationApplicator:
         vertical room before the page edge. Returns the grown rect and line
         count, or None when wrapping cannot make the text fit.
         """
-        lines, longest_token = self._wrap_line_count(
-            fit_font, text, fontsize, target_width
-        )
+        lines, longest_token = self._wrap_line_count(fit_font, text, fontsize, target_width)
         if lines <= 1 or longest_token > target_width:
             return None
 
@@ -773,8 +748,10 @@ class OperationApplicator:
 
         # Grow the box downward; keep the original font size.
         grown = fitz.Rect(
-            expanded_rect.x0, expanded_rect.y0,
-            expanded_rect.x1, expanded_rect.y0 + needed_h,
+            expanded_rect.x0,
+            expanded_rect.y0,
+            expanded_rect.x1,
+            expanded_rect.y0 + needed_h,
         )
         return grown, lines
 
@@ -830,13 +807,7 @@ class OperationApplicator:
             fallback_size = max(TEXT_SHRINK_MIN_FONT_SIZE, fallback_size * TEXT_SHRINK_FACTOR)
 
             result = page.insert_textbox(
-                expanded_rect,
-                text,
-                fontname=fontname,
-                fontsize=fallback_size,
-                fontfile=fontfile,
-                align=0,
-                color=color
+                expanded_rect, text, fontname=fontname, fontsize=fallback_size, fontfile=fontfile, align=0, color=color
             )
 
             if result >= 0:
@@ -846,18 +817,19 @@ class OperationApplicator:
                     f"{original_rect.x1:.1f},{original_rect.y1:.1f}) text_len={len(text)}"
                 )
                 if warnings is not None:
-                    warnings.append(OpWarning(
-                        op_index=op_index,
-                        severity="warn",
-                        code="text.shrunk",
-                        detail={
-                            "fontsize_from": round(initial_size, 2),
-                            "fontsize_to": round(fallback_size, 2),
-                            "text_len": len(text),
-                            "rect": (original_rect.x0, original_rect.y0,
-                                     original_rect.x1, original_rect.y1),
-                        },
-                    ))
+                    warnings.append(
+                        OpWarning(
+                            op_index=op_index,
+                            severity="warn",
+                            code="text.shrunk",
+                            detail={
+                                "fontsize_from": round(initial_size, 2),
+                                "fontsize_to": round(fallback_size, 2),
+                                "text_len": len(text),
+                                "rect": (original_rect.x0, original_rect.y0, original_rect.x1, original_rect.y1),
+                            },
+                        )
+                    )
                 return
 
         # Still failed after configured shrinks
@@ -867,24 +839,21 @@ class OperationApplicator:
             f"{original_rect.x1:.1f},{original_rect.y1:.1f}) text_len={len(text)}"
         )
         if warnings is not None:
-            warnings.append(OpWarning(
-                op_index=op_index,
-                severity="error",
-                code="text.overflow",
-                detail={
-                    "fontsize_from": round(initial_size, 2),
-                    "fontsize_to": round(fallback_size, 2),
-                    "text_len": len(text),
-                    "rect": (original_rect.x0, original_rect.y0,
-                             original_rect.x1, original_rect.y1),
-                },
-            ))
+            warnings.append(
+                OpWarning(
+                    op_index=op_index,
+                    severity="error",
+                    code="text.overflow",
+                    detail={
+                        "fontsize_from": round(initial_size, 2),
+                        "fontsize_to": round(fallback_size, 2),
+                        "text_len": len(text),
+                        "rect": (original_rect.x0, original_rect.y0, original_rect.x1, original_rect.y1),
+                    },
+                )
+            )
 
-    def _apply_section_removal(
-        self,
-        page: fitz.Page,
-        operations: List[Any]
-    ) -> None:
+    def _apply_section_removal(self, page: fitz.Page, operations: List[Any]) -> None:
         """
         Apply RemoveSectionAsImage operations (save mode only).
 
@@ -901,9 +870,7 @@ class OperationApplicator:
             if isinstance(op, RemoveSectionAsImage):
                 try:
                     op.apply(page)
-                    self.logger.info(
-                        f"Applied section removal on page {page.number}"
-                    )
+                    self.logger.info(f"Applied section removal on page {page.number}")
                     # Only one RemoveSectionAsImage per page supported
                     # (subsequent operations would fail due to page replacement)
                     break

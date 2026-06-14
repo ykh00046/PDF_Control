@@ -12,7 +12,7 @@ from pathlib import Path
 
 def is_frozen() -> bool:
     """Check if running in PyInstaller frozen environment."""
-    return getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
+    return getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
 
 
 def get_base_path() -> Path:
@@ -60,7 +60,7 @@ def get_i18n_path(filename: str) -> Path:
     Returns:
         Absolute path to translation file
     """
-    return get_resource_path(f'app/i18n/{filename}')
+    return get_resource_path(f"app/i18n/{filename}")
 
 
 def _platform_app_data_dir() -> Path:
@@ -69,12 +69,12 @@ def _platform_app_data_dir() -> Path:
 
     system = platform.system()
 
-    if system == 'Windows':
-        app_data = Path.home() / 'AppData' / 'Roaming' / 'PDF_Control'
-    elif system == 'Darwin':  # macOS
-        app_data = Path.home() / 'Library' / 'Application Support' / 'PDF_Control'
+    if system == "Windows":
+        app_data = Path.home() / "AppData" / "Roaming" / "PDF_Control"
+    elif system == "Darwin":  # macOS
+        app_data = Path.home() / "Library" / "Application Support" / "PDF_Control"
     else:  # Linux and others
-        app_data = Path.home() / '.config' / 'PDF_Control'
+        app_data = Path.home() / ".config" / "PDF_Control"
 
     return app_data
 
@@ -118,19 +118,19 @@ def get_app_data_dir() -> Path:
 
 def get_config_path() -> Path:
     """Get path to config file."""
-    return get_app_data_dir() / 'config.json'
+    return get_app_data_dir() / "config.json"
 
 
 def get_logs_dir() -> Path:
     """Get directory for rotating application logs."""
-    logs_dir = get_app_data_dir() / 'logs'
+    logs_dir = get_app_data_dir() / "logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
     return logs_dir
 
 
 def get_log_path() -> Path:
     """Get path to log file."""
-    return get_logs_dir() / 'app.log'
+    return get_logs_dir() / "app.log"
 
 
 def get_temp_dir() -> Path:
@@ -140,7 +140,7 @@ def get_temp_dir() -> Path:
     Returns:
         Path to temp directory
     """
-    temp = Path(tempfile.gettempdir()) / 'PDF_Control'
+    temp = Path(tempfile.gettempdir()) / "PDF_Control"
     temp.mkdir(parents=True, exist_ok=True)
     return temp
 

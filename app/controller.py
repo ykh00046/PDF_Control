@@ -12,12 +12,13 @@ class EditorController(QObject):
     Controller class that manages the DocumentSession and handles business logic.
     Acts as a bridge between the UI (View) and the Data (Model).
     """
+
     # Signals to notify the UI about state changes
-    document_loaded = Signal(str) # Emits file path
+    document_loaded = Signal(str)  # Emits file path
     document_closed = Signal()
-    history_changed = Signal() # Emits when undo/redo stack changes
-    operation_applied = Signal() # Emits when an operation is applied (requires re-render)
-    error_occurred = Signal(str) # Emits error message
+    history_changed = Signal()  # Emits when undo/redo stack changes
+    operation_applied = Signal()  # Emits when an operation is applied (requires re-render)
+    error_occurred = Signal(str)  # Emits error message
 
     def __init__(self):
         super().__init__()
@@ -134,8 +135,7 @@ class EditorController(QObject):
 
     def add_operation(self, operation: Operation) -> bool:
         """Adds an operation to the current session."""
-        return bool(self._run_session_action(
-            "add operation", lambda s: s.add_operation(operation)))
+        return bool(self._run_session_action("add operation", lambda s: s.add_operation(operation)))
 
     def undo(self):
         """Performs undo on the current session."""
@@ -153,35 +153,35 @@ class EditorController(QObject):
 
     def rotate_page(self, page_index: int, angle: int) -> bool:
         """Rotate a page by the given angle (90, 180, 270)."""
-        return bool(self._run_session_action(
-            "rotate page", lambda s: s.rotate_page(page_index, angle)))
+        return bool(self._run_session_action("rotate page", lambda s: s.rotate_page(page_index, angle)))
 
     def delete_pages(self, page_indices: list) -> bool:
         """Delete specified pages from the document."""
-        return bool(self._run_session_action(
-            "delete pages", lambda s: s.delete_pages(page_indices)))
+        return bool(self._run_session_action("delete pages", lambda s: s.delete_pages(page_indices)))
 
     def move_page(self, from_index: int, to_index: int) -> bool:
         """Move a page from one position to another."""
-        return bool(self._run_session_action(
-            "move page", lambda s: s.move_page(from_index, to_index)))
+        return bool(self._run_session_action("move page", lambda s: s.move_page(from_index, to_index)))
 
     def insert_blank_page(self, after_index: int = -1) -> bool:
         """Insert a blank A4 page."""
-        return bool(self._run_session_action(
-            "insert blank page", lambda s: s.insert_blank_page(after_index)))
+        return bool(self._run_session_action("insert blank page", lambda s: s.insert_blank_page(after_index)))
 
     def duplicate_pages(self, page_indices: list) -> bool:
         """Duplicate selected pages (copy inserted directly after each original)."""
+
         def run(s: DocumentSession) -> None:
             s.duplicate_pages(page_indices)  # int result discarded: 0 must not read as failure
+
         return bool(self._run_session_action("duplicate pages", run))
 
     def extract_pages(self, page_indices: list, output_path: str) -> bool:
         """Extract selected pages to a new PDF (source document unchanged)."""
-        return bool(self._run_session_action(
-            "extract pages", lambda s: s.extract_pages(page_indices, output_path),
-            applied=False))
+        return bool(
+            self._run_session_action(
+                "extract pages", lambda s: s.extract_pages(page_indices, output_path), applied=False
+            )
+        )
 
     def merge_pdf(self, source_path: str, after_index: int = -1) -> bool:
         """Insert pages from another PDF after after_index (-1 = end of document)."""
@@ -189,8 +189,10 @@ class EditorController(QObject):
 
     def merge_pdfs(self, source_paths: list, after_index: int = -1) -> bool:
         """Insert pages from several PDFs (in order) after after_index (-1 = end)."""
+
         def run(s: DocumentSession) -> None:
             s.merge_pdfs(source_paths, after_index)  # int result discarded: 0 must not read as failure
+
         return bool(self._run_session_action("merge PDFs", run))
 
     def split_document(self, output_dir: str, groups: list, base_name=None) -> List[str]:
@@ -199,15 +201,16 @@ class EditorController(QObject):
         Returns the list of written file paths, or an empty list on failure.
         """
         result = self._run_session_action(
-            "split document",
-            lambda s: s.split_document(output_dir, groups, base_name),
-            applied=False, default=[])
+            "split document", lambda s: s.split_document(output_dir, groups, base_name), applied=False, default=[]
+        )
         return result if isinstance(result, list) else []
 
     def export_text(self, output_path: str, page_indices=None, fmt: str = "txt") -> bool:
         """Export page/document text to a txt or md file (source unchanged)."""
+
         def run(s: DocumentSession) -> None:
             s.export_text(output_path, page_indices, fmt)  # int result discarded: 0 chars is still success
+
         return bool(self._run_session_action("export text", run, applied=False))
 
     def add_watermark(
@@ -226,11 +229,11 @@ class EditorController(QObject):
         op is added per page (same pattern as batch replace); the guard emits a
         single ``operation_applied`` so the preview re-renders once.
         """
+
         def run(s: DocumentSession) -> None:
             for i in page_indices:
-                s.add_operation(
-                    WatermarkText(i, text, fontsize, color, opacity, angle)
-                )
+                s.add_operation(WatermarkText(i, text, fontsize, color, opacity, angle))
+
         return bool(self._run_session_action("add watermark", run))
 
     def add_image_watermark(
@@ -246,11 +249,11 @@ class EditorController(QObject):
         Same per-page pattern as :meth:`add_watermark`; the handler decides the
         scope so the controller stays Qt/view free.
         """
+
         def run(s: DocumentSession) -> None:
             for i in page_indices:
-                s.add_operation(
-                    WatermarkImage(i, image_path, opacity, scale, rotate)
-                )
+                s.add_operation(WatermarkImage(i, image_path, opacity, scale, rotate))
+
         return bool(self._run_session_action("add image watermark", run))
 
     def _on_history_changed(self):

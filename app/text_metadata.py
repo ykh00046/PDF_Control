@@ -6,6 +6,7 @@ as-is; the rect-based estimate (0.6 ratio, 8..72 clamp) only applies when
 no text intersects the rect. The first-line baseline is extracted so the
 replacement can be anchored on the original baseline.
 """
+
 from typing import Any, Dict, List
 
 import fitz
