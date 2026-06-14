@@ -1,0 +1,6 @@
+# Revisions to ignore in `git blame` (formatting-only, no behavior change).
+# Enable locally with:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# ruff-format: applied ruff formatter across the codebase (2026-06-15)
+c98b0272b664f006d1b73518241a74668d9541f6
