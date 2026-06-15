@@ -221,6 +221,7 @@ class EditorController(QObject):
         color: Tuple[float, float, float] = (0.5, 0.5, 0.5),
         opacity: float = 0.3,
         angle: float = 45.0,
+        tile: bool = False,
     ) -> bool:
         """Add a text watermark to each page in ``page_indices``.
 
@@ -232,7 +233,7 @@ class EditorController(QObject):
 
         def run(s: DocumentSession) -> None:
             for i in page_indices:
-                s.add_operation(WatermarkText(i, text, fontsize, color, opacity, angle))
+                s.add_operation(WatermarkText(i, text, fontsize, color, opacity, angle, tile))
 
         return bool(self._run_session_action("add watermark", run))
 
@@ -243,6 +244,7 @@ class EditorController(QObject):
         opacity: float = 0.3,
         scale: float = 0.5,
         rotate: int = 0,
+        tile: bool = False,
     ) -> bool:
         """Add an image watermark to each page in ``page_indices``.
 
@@ -252,7 +254,7 @@ class EditorController(QObject):
 
         def run(s: DocumentSession) -> None:
             for i in page_indices:
-                s.add_operation(WatermarkImage(i, image_path, opacity, scale, rotate))
+                s.add_operation(WatermarkImage(i, image_path, opacity, scale, rotate, tile))
 
         return bool(self._run_session_action("add image watermark", run))
 

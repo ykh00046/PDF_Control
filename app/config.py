@@ -56,6 +56,11 @@ TEXT_WRAP_ENABLED = True  # master switch for the wrap-first policy
 TEXT_WRAP_LINE_HEIGHT_FACTOR = 1.2  # line height = fontsize * this factor
 TEXT_WRAP_BOTTOM_MARGIN = 4.0  # keep at least this gap (pt) from page bottom
 
+# --- Watermark tiling ---
+# Cell size for a tiled watermark = max(watermark width, size) * this factor.
+# Larger = sparser grid; the factor leaves room so rotated tiles don't overlap.
+TILE_SPACING_FACTOR = 1.8
+
 DEFAULT_CONFIG = {
     "window": {"width": 1200, "height": 800, "x": 100, "y": 100},
     "last_directory": "",

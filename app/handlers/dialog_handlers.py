@@ -216,6 +216,7 @@ class DialogHandlerMixin:
             color=settings["color"],
             opacity=settings["opacity"],
             angle=settings["angle"],
+            tile=settings.get("tile", False),
         )
         if applied:
             self.statusBar().showMessage(tr("status.watermark_applied", len(page_indices)))
@@ -252,6 +253,7 @@ class DialogHandlerMixin:
             opacity=settings["opacity"],
             scale=settings["scale"],
             rotate=settings["rotate"],
+            tile=settings.get("tile", False),
         )
         if applied:
             self.statusBar().showMessage(tr("status.image_watermark_applied", len(page_indices)))

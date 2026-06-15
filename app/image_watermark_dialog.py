@@ -10,6 +10,7 @@ arbitrary-angle morph).
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QButtonGroup,
+    QCheckBox,
     QComboBox,
     QDialog,
     QFileDialog,
@@ -92,6 +93,10 @@ class ImageWatermarkDialog(QDialog):
         layout.addWidget(self.scope_current)
         layout.addWidget(self.scope_all)
 
+        # Tile across the page
+        self.tile_check = QCheckBox(tr("image_watermark.tile"))
+        layout.addWidget(self.tile_check)
+
         # Buttons
         btn_row = QHBoxLayout()
         apply_btn = QPushButton(tr("image_watermark.button.apply"))
@@ -128,6 +133,7 @@ class ImageWatermarkDialog(QDialog):
                 "scale": self.scale_spin.value() / 100.0,
                 "rotate": self.angle_combo.currentData(),
                 "all_pages": self.scope_all.isChecked(),
+                "tile": self.tile_check.isChecked(),
             }
         )
         self.accept()

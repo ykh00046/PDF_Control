@@ -9,6 +9,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QButtonGroup,
+    QCheckBox,
     QColorDialog,
     QDialog,
     QDoubleSpinBox,
@@ -95,6 +96,10 @@ class WatermarkDialog(QDialog):
         layout.addWidget(self.scope_current)
         layout.addWidget(self.scope_all)
 
+        # Tile across the page
+        self.tile_check = QCheckBox(tr("watermark.tile"))
+        layout.addWidget(self.tile_check)
+
         # Buttons
         btn_row = QHBoxLayout()
         apply_btn = QPushButton(tr("watermark.button.apply"))
@@ -133,6 +138,7 @@ class WatermarkDialog(QDialog):
                 "opacity": self.opacity_slider.value() / 100.0,
                 "angle": self.angle_spin.value(),
                 "all_pages": self.scope_all.isChecked(),
+                "tile": self.tile_check.isChecked(),
             }
         )
         self.accept()

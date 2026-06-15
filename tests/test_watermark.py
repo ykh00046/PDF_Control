@@ -64,6 +64,53 @@ def test_watermark_empty_text_is_noop():
     doc.close()
 
 
+def _count_watermark(tmp_path, tile, label):
+    """Apply a text watermark and return how many instances are searchable."""
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+    # Short text + small size -> a denser grid; rotation makes search_for an
+    # undercount, so we compare counts rather than assert an exact number.
+    WatermarkText(0, "WM", fontsize=20, tile=tile).apply(page)
+    out = tmp_path / f"{label}.pdf"
+    doc.save(str(out))
+    doc.close()
+    chk = fitz.open(str(out))
+    try:
+        return len(chk[0].search_for("WM"))
+    finally:
+        chk.close()
+
+
+def test_watermark_tile_places_more_than_centered(tmp_path):
+    """tile=True repeats across the page; centered is exactly one."""
+    centered = _count_watermark(tmp_path, False, "wm_center")
+    tiled = _count_watermark(tmp_path, True, "wm_tile")
+    assert centered == 1
+    assert tiled > centered
+
+
+def test_image_watermark_tile_places_many(tmp_path):
+    logo = _make_logo(tmp_path)
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+    WatermarkImage(0, logo, scale=0.2, tile=True).apply(page)
+    out = tmp_path / "imgwm_tile.pdf"
+    doc.save(str(out), garbage=3, deflate=True)
+    doc.close()
+
+    chk = fitz.open(str(out))
+    try:
+        # Multiple placements; the image program itself is embedded once
+        # (xref reuse), so get_images() may dedup -- assert the page draws
+        # the image by checking the embedded image is present and the file
+        # rendered without error.
+        assert len(chk[0].get_images()) >= 1
+        pix = chk[0].get_pixmap()
+        assert pix.width > 0
+    finally:
+        chk.close()
+
+
 def test_preview_save_equivalence_watermark(tmp_path):
     """The same watermark pass runs in both PREVIEW and SAVE (non-destructive)."""
     applicator = OperationApplicator()

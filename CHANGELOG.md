@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Fixed: text export's "page range" option now works — entering a range like "1-3, 5, 7-9" exports exactly those pages. Previously selecting the range option silently exported only the current page.
+- Added watermark tiling: both text and image watermark dialogs now have a "Tile across the page" option that repeats the watermark in a grid instead of placing a single one at the center.
 - Internal: applied the ruff formatter across the codebase and added a format check to CI (formatting only — no behavior change).
 - Fixed: the Remove Section precision-coordinate dialog showed raw i18n keys (e.g. "remove.precision.title") instead of proper labels, because those keys were missing from the translation files; added the missing English/Korean labels and a validator check that catches any tr() key absent from the translations.
 - Internal: consolidated tool configuration into pyproject.toml (pytest + mypy + the new ruff linter), added a ruff lint gate to CI, and cleaned up lint violations across the codebase.

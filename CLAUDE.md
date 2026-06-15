@@ -211,6 +211,10 @@ _None currently tracked. Open a new item here if one surfaces._
 
 - ~~텍스트 내보내기 "페이지 범위" 끊긴 연결~~: `TextExportDialog`에 range 라디오/입력란은 있었으나 `get_settings()`가 range를 버려(scope를 all/current로만, range_edit 미독) 범위 선택 시 **현재 페이지만 조용히 내보내짐**. 또 `tr()`로 참조하는 `text_export.scope.range`/`range.placeholder` i18n 키가 en/ko 양쪽에 **없었음**(패리티 동수라 미검출). 수정: get_settings 3-scope+range 반환, `apply_text_export`가 기존 `parse_page_ranges`(재사용) 파싱→평탄화→`resolve_indices` 정렬·중복제거. ValueError 안전 중단. 누락 i18n 3키 복구. 백엔드 신규 0(연결만). 287 tests pass. 후보: validate_i18n에 tr() 참조 키 검증 추가.
 
+### Added (2026-06-15, watermark-tiling PDCA)
+
+- **워터마크 타일링**: `WatermarkText`/`WatermarkImage`에 `tile: bool=False` — 중앙 1개 대신 페이지 전체 자동 격자 반복. 셀 크기 = max(워터마크 치수)×`TILE_SPACING_FACTOR`(config 1.8), `_tile_centers` 격자 계산. 텍스트는 `_draw_at` 헬퍼 공유(DRY), 이미지는 첫 `insert_image` xref 재사용(1회 embed). 다이얼로그 "타일" 체크박스→controller `tile` 파라미터→op. tile=False 100% 하위호환(from_dict 기본 False), preview=save 보존. i18n `watermark.tile`/`image_watermark.tile`. 298 tests pass.
+
 ### Added (2026-06-15, ruff-format PDCA)
 
 - **ruff 포매터 적용**: `[tool.ruff.format]` + 전 코드베이스 `ruff format`(75/84 파일, ~1600줄 diff, net −148 = 과분할 코드 합침). **동작 완전 불변**(토큰 보존) — 295 tests + mypy strict 0으로 확인. CI에 `ruff format --check` 게이트 추가. `.git-blame-ignore-revs`에 포맷 커밋 해시 등록(blame 오염 완화; `git config blame.ignoreRevsFile .git-blame-ignore-revs`). 이제 ruff = check(린트) + format(포맷) 양쪽 CI 게이트.

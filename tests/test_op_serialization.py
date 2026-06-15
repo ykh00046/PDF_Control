@@ -79,6 +79,13 @@ def test_watermark_round_trip():
     assert restored.color == (0.4, 0.4, 0.4)
     assert restored.opacity == 0.25
     assert restored.angle == 30.0
+    assert restored.tile is False
+
+
+def test_watermark_tile_round_trip():
+    op = WatermarkText(0, "TILED", tile=True)
+    _round_trip(op)
+    assert Operation.from_dict(op.to_dict()).tile is True
 
 
 def test_watermark_legacy_payload_uses_defaults():
@@ -95,16 +102,18 @@ def test_watermark_legacy_payload_uses_defaults():
     assert restored.color == (0.5, 0.5, 0.5)
     assert restored.opacity == 0.3
     assert restored.angle == 45.0
+    assert restored.tile is False  # pre-tiling payload defaults to centered
 
 
 def test_image_watermark_round_trip():
-    op = WatermarkImage(1, "/tmp/logo.png", opacity=0.4, scale=0.6, rotate=90)
+    op = WatermarkImage(1, "/tmp/logo.png", opacity=0.4, scale=0.6, rotate=90, tile=True)
     _round_trip(op)
     restored = Operation.from_dict(op.to_dict())
     assert restored.image_path == "/tmp/logo.png"
     assert restored.opacity == 0.4
     assert restored.scale == 0.6
     assert restored.rotate == 90
+    assert restored.tile is True
 
 
 def test_image_watermark_legacy_payload_uses_defaults():

@@ -88,6 +88,7 @@ class Operation(ABC):
                 tuple(wm_color) if wm_color else (0.5, 0.5, 0.5),
                 data.get("opacity", 0.3),
                 data.get("angle", 45.0),
+                data.get("tile", False),
             )
         elif op_type == "WatermarkImage":
             return WatermarkImage(
@@ -96,6 +97,7 @@ class Operation(ABC):
                 data.get("opacity", 0.3),
                 data.get("scale", 0.5),
                 data.get("rotate", 0),
+                data.get("tile", False),
             )
         else:
             raise ValueError(f"Unknown operation type: {op_type}")
