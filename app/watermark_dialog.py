@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
     QColorDialog,
+    QComboBox,
     QDialog,
     QDoubleSpinBox,
     QHBoxLayout,
@@ -86,6 +87,15 @@ class WatermarkDialog(QDialog):
         color_row.addWidget(self.color_button)
         layout.addLayout(color_row)
 
+        # Position (ignored while tiling).
+        position_row = QHBoxLayout()
+        position_row.addWidget(QLabel(tr("watermark.label.position")))
+        self.position_combo = QComboBox()
+        for value in ("center", "top-left", "top-right", "bottom-left", "bottom-right"):
+            self.position_combo.addItem(tr(f"watermark.position.{value}"), value)
+        position_row.addWidget(self.position_combo)
+        layout.addLayout(position_row)
+
         # Scope
         self.scope_current = QRadioButton(tr("watermark.scope.current"))
         self.scope_all = QRadioButton(tr("watermark.scope.all"))
@@ -98,6 +108,7 @@ class WatermarkDialog(QDialog):
 
         # Tile across the page
         self.tile_check = QCheckBox(tr("watermark.tile"))
+        self.tile_check.toggled.connect(lambda checked: self.position_combo.setEnabled(not checked))
         layout.addWidget(self.tile_check)
 
         # Buttons
@@ -139,6 +150,7 @@ class WatermarkDialog(QDialog):
                 "angle": self.angle_spin.value(),
                 "all_pages": self.scope_all.isChecked(),
                 "tile": self.tile_check.isChecked(),
+                "position": self.position_combo.currentData(),
             }
         )
         self.accept()

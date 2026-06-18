@@ -89,6 +89,7 @@ class Operation(ABC):
                 data.get("opacity", 0.3),
                 data.get("angle", 45.0),
                 data.get("tile", False),
+                data.get("position", "center"),
             )
         elif op_type == "WatermarkImage":
             return WatermarkImage(
@@ -98,6 +99,7 @@ class Operation(ABC):
                 data.get("scale", 0.5),
                 data.get("rotate", 0),
                 data.get("tile", False),
+                data.get("position", "center"),
             )
         else:
             raise ValueError(f"Unknown operation type: {op_type}")

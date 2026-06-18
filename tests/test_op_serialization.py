@@ -88,6 +88,12 @@ def test_watermark_tile_round_trip():
     assert Operation.from_dict(op.to_dict()).tile is True
 
 
+def test_watermark_position_round_trip():
+    op = WatermarkText(0, "CORNER", position="bottom-right")
+    _round_trip(op)
+    assert Operation.from_dict(op.to_dict()).position == "bottom-right"
+
+
 def test_watermark_legacy_payload_uses_defaults():
     """Only 'text' is mandatory; missing optional keys fall back to defaults."""
     restored = Operation.from_dict(
@@ -103,6 +109,7 @@ def test_watermark_legacy_payload_uses_defaults():
     assert restored.opacity == 0.3
     assert restored.angle == 45.0
     assert restored.tile is False  # pre-tiling payload defaults to centered
+    assert restored.position == "center"
 
 
 def test_image_watermark_round_trip():
@@ -128,3 +135,4 @@ def test_image_watermark_legacy_payload_uses_defaults():
     assert restored.opacity == 0.3
     assert restored.scale == 0.5
     assert restored.rotate == 0
+    assert restored.position == "center"

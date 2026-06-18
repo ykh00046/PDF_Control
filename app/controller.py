@@ -5,6 +5,7 @@ from PySide6.QtCore import QObject, Signal
 from app.encryption import EncryptedPDFError
 from app.logger import get_logger
 from app.model import DocumentSession, Operation, WatermarkImage, WatermarkText
+from app.operations.watermark import WatermarkPosition
 
 
 class EditorController(QObject):
@@ -222,6 +223,7 @@ class EditorController(QObject):
         opacity: float = 0.3,
         angle: float = 45.0,
         tile: bool = False,
+        position: WatermarkPosition = "center",
     ) -> bool:
         """Add a text watermark to each page in ``page_indices``.
 
@@ -233,7 +235,7 @@ class EditorController(QObject):
 
         def run(s: DocumentSession) -> None:
             for i in page_indices:
-                s.add_operation(WatermarkText(i, text, fontsize, color, opacity, angle, tile))
+                s.add_operation(WatermarkText(i, text, fontsize, color, opacity, angle, tile, position))
 
         return bool(self._run_session_action("add watermark", run))
 
@@ -245,6 +247,7 @@ class EditorController(QObject):
         scale: float = 0.5,
         rotate: int = 0,
         tile: bool = False,
+        position: WatermarkPosition = "center",
     ) -> bool:
         """Add an image watermark to each page in ``page_indices``.
 
@@ -254,7 +257,7 @@ class EditorController(QObject):
 
         def run(s: DocumentSession) -> None:
             for i in page_indices:
-                s.add_operation(WatermarkImage(i, image_path, opacity, scale, rotate, tile))
+                s.add_operation(WatermarkImage(i, image_path, opacity, scale, rotate, tile, position))
 
         return bool(self._run_session_action("add image watermark", run))
 

@@ -83,6 +83,15 @@ class ImageWatermarkDialog(QDialog):
         angle_row.addWidget(self.angle_combo)
         layout.addLayout(angle_row)
 
+        # Position (ignored while tiling).
+        position_row = QHBoxLayout()
+        position_row.addWidget(QLabel(tr("image_watermark.label.position")))
+        self.position_combo = QComboBox()
+        for value in ("center", "top-left", "top-right", "bottom-left", "bottom-right"):
+            self.position_combo.addItem(tr(f"watermark.position.{value}"), value)
+        position_row.addWidget(self.position_combo)
+        layout.addLayout(position_row)
+
         # Scope
         self.scope_current = QRadioButton(tr("image_watermark.scope.current"))
         self.scope_all = QRadioButton(tr("image_watermark.scope.all"))
@@ -95,6 +104,7 @@ class ImageWatermarkDialog(QDialog):
 
         # Tile across the page
         self.tile_check = QCheckBox(tr("image_watermark.tile"))
+        self.tile_check.toggled.connect(lambda checked: self.position_combo.setEnabled(not checked))
         layout.addWidget(self.tile_check)
 
         # Buttons
@@ -134,6 +144,7 @@ class ImageWatermarkDialog(QDialog):
                 "rotate": self.angle_combo.currentData(),
                 "all_pages": self.scope_all.isChecked(),
                 "tile": self.tile_check.isChecked(),
+                "position": self.position_combo.currentData(),
             }
         )
         self.accept()

@@ -89,6 +89,32 @@ def test_watermark_tile_places_more_than_centered(tmp_path):
     assert tiled > centered
 
 
+@pytest.mark.parametrize(
+    ("position", "left", "top"),
+    [
+        ("top-left", True, True),
+        ("top-right", False, True),
+        ("bottom-left", True, False),
+        ("bottom-right", False, False),
+    ],
+)
+def test_text_watermark_corner_position(position, left, top):
+    """Plan SC-1: each corner places searchable text in the expected quadrant."""
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+    WatermarkText(0, WM, fontsize=24, angle=0, position=position).apply(page)
+    rect = page.search_for(WM)[0]
+    assert (rect.x1 < page.rect.width / 2) is left
+    assert (rect.y1 < page.rect.height / 2) is top
+    assert page.rect.contains(rect)
+    doc.close()
+
+
+def test_invalid_watermark_position_rejected():
+    with pytest.raises(ValueError, match="Unsupported watermark position"):
+        WatermarkText(0, WM, position="outside")
+
+
 def test_image_watermark_tile_places_many(tmp_path):
     logo = _make_logo(tmp_path)
     doc = fitz.open()
@@ -182,6 +208,18 @@ def test_add_watermark_single_page(three_page_pdf, tmp_path):
         controller.close_document()
 
 
+def test_controller_preserves_watermark_position(three_page_pdf):
+    controller = EditorController()
+    assert controller.load_document(three_page_pdf) is True
+    try:
+        assert controller.add_watermark([0], WM, position="top-left") is True
+        op = controller.session.history[-1]
+        assert isinstance(op, WatermarkText)
+        assert op.position == "top-left"
+    finally:
+        controller.close_document()
+
+
 # ── dialog (settings emission + empty-text guard) ────────────────────
 
 
@@ -194,6 +232,7 @@ def test_dialog_emits_settings(qtbot):
     dialog.size_spin.setValue(60)
     dialog.opacity_slider.setValue(50)
     dialog.angle_spin.setValue(30.0)
+    dialog.position_combo.setCurrentIndex(dialog.position_combo.findData("bottom-right"))
 
     captured = {}
     dialog.watermark_confirmed.connect(captured.update)
@@ -204,6 +243,7 @@ def test_dialog_emits_settings(qtbot):
     assert captured["opacity"] == 0.5
     assert captured["angle"] == 30.0
     assert captured["all_pages"] is True  # default scope
+    assert captured["position"] == "bottom-right"
     assert len(captured["color"]) == 3
 
 
@@ -220,6 +260,16 @@ def test_dialog_empty_text_rejected(qtbot):
 
     assert emitted == []  # nothing emitted
     assert dialog.result() == WatermarkDialog.DialogCode.Rejected
+
+
+def test_dialog_tile_disables_position(qtbot):
+    from app.watermark_dialog import WatermarkDialog
+
+    dialog = WatermarkDialog()
+    qtbot.addWidget(dialog)
+    assert dialog.position_combo.isEnabled()
+    dialog.tile_check.setChecked(True)
+    assert not dialog.position_combo.isEnabled()
 
 
 # ── image watermark (image-watermark PDCA) ───────────────────────────
@@ -241,6 +291,21 @@ def test_image_watermark_renders(tmp_path):
         assert "Body content" in chk[0].get_text()
     finally:
         chk.close()
+
+
+@pytest.mark.parametrize("rotate", [0, 90])
+def test_image_watermark_corner_position(tmp_path, rotate):
+    logo = _make_logo(tmp_path)
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+    WatermarkImage(0, logo, scale=0.2, rotate=rotate, position="bottom-right").apply(page)
+    image_rect = page.get_image_rects(page.get_images(full=True)[0][0])[0]
+    assert image_rect.x0 > page.rect.width / 2
+    assert image_rect.y0 > page.rect.height / 2
+    assert page.rect.contains(image_rect)
+    assert image_rect.x1 == pytest.approx(page.rect.x1 - 36)
+    assert image_rect.y1 == pytest.approx(page.rect.y1 - 36)
+    doc.close()
 
 
 def test_image_watermark_missing_file_noop():
@@ -299,3 +364,23 @@ def test_image_watermark_dialog_requires_file(qtbot):
     dialog._apply()
     assert emitted == []
     assert dialog.result() == ImageWatermarkDialog.DialogCode.Rejected
+
+
+def test_image_watermark_dialog_emits_position_and_tile_state(qtbot, tmp_path):
+    from app.image_watermark_dialog import ImageWatermarkDialog
+
+    dialog = ImageWatermarkDialog()
+    qtbot.addWidget(dialog)
+    dialog._image_path = str(tmp_path / "logo.png")
+    dialog.position_combo.setCurrentIndex(dialog.position_combo.findData("top-right"))
+    captured = {}
+    dialog.image_watermark_confirmed.connect(captured.update)
+
+    dialog.tile_check.setChecked(True)
+    assert not dialog.position_combo.isEnabled()
+    dialog.tile_check.setChecked(False)
+    assert dialog.position_combo.isEnabled()
+    dialog._apply()
+
+    assert captured["position"] == "top-right"
+    assert captured["tile"] is False

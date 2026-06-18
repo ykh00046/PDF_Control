@@ -7,17 +7,75 @@ rotation); images use insert_image with a Pixmap alpha channel for opacity
 (insert_image has no opacity param and only rotates in 90-degree steps).
 
 Each watermark is either centered (default) or tiled across the page in an
-auto-sized grid (``tile=True``).
+auto-sized grid (``tile=True``), or placed at one of four page corners.
 """
 
+import math
 import os
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Literal, Tuple, cast
 
 import fitz
 
 from app.config import TILE_SPACING_FACTOR
 from app.logger import get_logger
 from app.operations.base import Operation
+
+WatermarkPosition = Literal["center", "top-left", "top-right", "bottom-left", "bottom-right"]
+POSITION_OPTIONS: Tuple[WatermarkPosition, ...] = (
+    "center",
+    "top-left",
+    "top-right",
+    "bottom-left",
+    "bottom-right",
+)
+WATERMARK_MARGIN = 36.0
+
+
+def _validate_position(position: str) -> WatermarkPosition:
+    if position not in POSITION_OPTIONS:
+        raise ValueError(f"Unsupported watermark position: {position!r}")
+    return cast(WatermarkPosition, position)
+
+
+def _rotated_size(width: float, height: float, angle: float) -> Tuple[float, float]:
+    """Return the axis-aligned size of a rectangle rotated by ``angle``."""
+    radians = math.radians(angle % 360)
+    cosine = abs(math.cos(radians))
+    sine = abs(math.sin(radians))
+    return width * cosine + height * sine, width * sine + height * cosine
+
+
+def _placement_center(
+    page_rect: fitz.Rect,
+    width: float,
+    height: float,
+    position: WatermarkPosition,
+    margin: float = WATERMARK_MARGIN,
+) -> Tuple[float, float]:
+    """Return a placement center, falling back to center on an oversized axis."""
+    half_width = width / 2
+    half_height = height / 2
+    page_center_x = page_rect.x0 + page_rect.width / 2
+    page_center_y = page_rect.y0 + page_rect.height / 2
+
+    if position == "center":
+        return page_center_x, page_center_y
+
+    fits_x = width + 2 * margin <= page_rect.width
+    fits_y = height + 2 * margin <= page_rect.height
+    if fits_x:
+        center_x = (
+            page_rect.x0 + margin + half_width if position.endswith("left") else page_rect.x1 - margin - half_width
+        )
+    else:
+        center_x = page_center_x
+    if fits_y:
+        center_y = (
+            page_rect.y0 + margin + half_height if position.startswith("top") else page_rect.y1 - margin - half_height
+        )
+    else:
+        center_y = page_center_y
+    return center_x, center_y
 
 
 def _tile_centers(page_rect: fitz.Rect, cell_size: float) -> List[Tuple[float, float]]:
@@ -42,6 +100,7 @@ class WatermarkText(Operation):
         opacity: float = 0.3,
         angle: float = 45.0,
         tile: bool = False,
+        position: WatermarkPosition = "center",
     ) -> None:
         super().__init__(page_index, [])  # watermark uses no selection rects
         self.text = text
@@ -50,6 +109,7 @@ class WatermarkText(Operation):
         self.opacity = opacity  # 0-1 (1 = opaque)
         self.angle = angle  # degrees, counter-clockwise
         self.tile = tile  # repeat across the page in a grid
+        self.position = _validate_position(position)
 
     def apply(self, page: fitz.Page) -> None:
         """Draw the watermark centered, or tiled across the page when ``tile``."""
@@ -62,7 +122,9 @@ class WatermarkText(Operation):
             cell = max(text_width, self.fontsize) * TILE_SPACING_FACTOR
             centers = _tile_centers(page.rect, cell)
         else:
-            centers = [(page.rect.width / 2, page.rect.height / 2)]
+            # Design Ref: §9 — use rotated bounds so corner placements retain a safe margin.
+            rotated_width, rotated_height = _rotated_size(text_width, self.fontsize, self.angle)
+            centers = [_placement_center(page.rect, rotated_width, rotated_height, self.position)]
 
         for center_x, center_y in centers:
             self._draw_at(page, font, text_width, center_x, center_y)
@@ -95,6 +157,7 @@ class WatermarkText(Operation):
                 "opacity": self.opacity,
                 "angle": self.angle,
                 "tile": self.tile,
+                "position": self.position,
             }
         )
         return data
@@ -116,6 +179,7 @@ class WatermarkImage(Operation):
         scale: float = 0.5,
         rotate: int = 0,
         tile: bool = False,
+        position: WatermarkPosition = "center",
     ) -> None:
         super().__init__(page_index, [])  # no selection rects
         self.image_path = image_path
@@ -123,6 +187,7 @@ class WatermarkImage(Operation):
         self.scale = scale  # fraction of page WIDTH
         self.rotate = rotate  # 0/90/180/270 (insert_image limitation)
         self.tile = tile  # repeat across the page in a grid
+        self.position = _validate_position(position)
 
     def apply(self, page: fitz.Page) -> None:
         """Draw the image centered, or tiled across the page when ``tile``.
@@ -150,7 +215,9 @@ class WatermarkImage(Operation):
             cell = max(target_w, target_h) * TILE_SPACING_FACTOR
             centers = _tile_centers(page.rect, cell)
         else:
-            centers = [(page.rect.width / 2, page.rect.height / 2)]
+            # insert_image rotates inside this target rectangle; unlike TextWriter,
+            # the occupied page bounds do not rotate with the image content.
+            centers = [_placement_center(page.rect, target_w, target_h, self.position)]
 
         # Embed once on the first placement, then reuse its xref so a tiled
         # image isn't stored N times.
@@ -176,6 +243,7 @@ class WatermarkImage(Operation):
                 "scale": self.scale,
                 "rotate": self.rotate,
                 "tile": self.tile,
+                "position": self.position,
             }
         )
         return data
