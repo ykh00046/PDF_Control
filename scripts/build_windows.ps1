@@ -8,14 +8,12 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $projectRoot
 
-$python = Get-Command python -ErrorAction SilentlyContinue
-if (-not $python) {
-    throw "Python was not found on PATH."
-}
+. (Join-Path $PSScriptRoot "resolve_python.ps1")
+$pythonPath = Resolve-ProjectPython
 
-Write-Host "Building PDF Control (onedir)..."
+Write-Host "Building PDF Control (onedir) with $pythonPath..."
 $env:PYTHONNOUSERSITE = "1"
-& $python.Source -I -m PyInstaller --clean --noconfirm pdf_control.spec
+& $pythonPath -I -m PyInstaller --clean --noconfirm pdf_control.spec
 if ($LASTEXITCODE -ne 0) {
     throw "PyInstaller build failed with exit code $LASTEXITCODE"
 }

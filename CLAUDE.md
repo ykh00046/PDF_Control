@@ -211,6 +211,10 @@ _None currently tracked. Open a new item here if one surfaces._
 
 - ~~텍스트 내보내기 "페이지 범위" 끊긴 연결~~: `TextExportDialog`에 range 라디오/입력란은 있었으나 `get_settings()`가 range를 버려(scope를 all/current로만, range_edit 미독) 범위 선택 시 **현재 페이지만 조용히 내보내짐**. 또 `tr()`로 참조하는 `text_export.scope.range`/`range.placeholder` i18n 키가 en/ko 양쪽에 **없었음**(패리티 동수라 미검출). 수정: get_settings 3-scope+range 반환, `apply_text_export`가 기존 `parse_page_ranges`(재사용) 파싱→평탄화→`resolve_indices` 정렬·중복제거. ValueError 안전 중단. 누락 i18n 3키 복구. 백엔드 신규 0(연결만). 287 tests pass. 후보: validate_i18n에 tr() 참조 키 검증 추가.
 
+### Added (2026-07-20, pyinstaller-packaging PDCA)
+
+- **패키징 첫 실측 검증 (Phase 5 완료)**: 기존 spec/스크립트(`pdf_control.spec` onedir, `scripts/build_windows.ps1`·`smoke_frozen.ps1`·`release_windows.ps1`)가 미검증 상태였던 것을 end-to-end 검증. PyInstaller 6.16.0+py3.13 onedir 176MB, frozen 렌더 워커(`--render-worker`) 65ms success, GUI 스모크(i18n ko 로드·config/log 정상). **발견 버그**: 스크립트가 `Get-Command python`으로 무관한 3.11 agent venv를 잡을 수 있던 것 → `scripts/resolve_python.ps1`(`PDF_CONTROL_PYTHON`→`py -3.13`→폴백) 공유 해석기로 수정. `requirements-build.txt` `pyinstaller==6.16.0` 핀. `release_windows.ps1` 1회로 zip+SHA256 산출. 322 tests pass(앱 코드 무변경). 보류: CI 빌드 잡, 코드 서명, UPX.
+
 ### Added (2026-06-15, watermark-tiling PDCA)
 
 - **워터마크 타일링**: `WatermarkText`/`WatermarkImage`에 `tile: bool=False` — 중앙 1개 대신 페이지 전체 자동 격자 반복. 셀 크기 = max(워터마크 치수)×`TILE_SPACING_FACTOR`(config 1.8), `_tile_centers` 격자 계산. 텍스트는 `_draw_at` 헬퍼 공유(DRY), 이미지는 첫 `insert_image` xref 재사용(1회 embed). 다이얼로그 "타일" 체크박스→controller `tile` 파라미터→op. tile=False 100% 하위호환(from_dict 기본 False), preview=save 보존. i18n `watermark.tile`/`image_watermark.tile`. 298 tests pass.
@@ -300,7 +304,7 @@ _None currently tracked. Open a new item here if one surfaces._
 
 ### Risks
 
-- Packaging with PyInstaller: Relative path/data bundling not yet tested
+- Packaging: 미서명 exe(SmartScreen 경고)·UPX 미적용(176MB)·CI 빌드 잡 부재 — 배포 대상이 생기면 처리 (frozen 동작 자체는 2026-07-20 검증 완료)
 - Memory usage: Large section removal with high DPI - mitigated via auto-cap, monitor logs
 - Save-time operation application is synchronous on the UI thread (all ops, incl. high-DPI RemoveSection) — a save with heavy pending ops can block the UI for seconds. Async save (worker + session rebind) is a candidate for a future cycle. (noted 2026-06-11, r7-history-policy)
 

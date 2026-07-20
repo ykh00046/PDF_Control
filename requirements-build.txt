@@ -1,2 +1,7 @@
+# Packaging-only dependencies (not needed at runtime or in CI tests).
+# Pinned like requirements.txt: upgrades should be deliberate.
+# Verified 2026-07-20: PyInstaller 6.16.0 + Python 3.13 builds a working
+# onedir bundle (frozen render worker + GUI smoke pass, see
+# scripts/smoke_frozen.ps1).
 -r requirements.txt
-PyInstaller>=6.0
+pyinstaller==6.16.0

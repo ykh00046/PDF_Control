@@ -24,12 +24,10 @@ if (-not (Test-Path $ExePath)) {
     throw "Frozen executable not found: $ExePath"
 }
 
-$python = Get-Command python -ErrorAction SilentlyContinue
-if (-not $python) {
-    throw "Python was not found on PATH."
-}
+. (Join-Path $PSScriptRoot "resolve_python.ps1")
+$pythonPath = Resolve-ProjectPython
 
-$assetJson = & $python.Source (Join-Path $projectRoot "scripts\create_frozen_smoke_assets.py") --work-dir $WorkDir
+$assetJson = & $pythonPath (Join-Path $projectRoot "scripts\create_frozen_smoke_assets.py") --work-dir $WorkDir
 if ($LASTEXITCODE -ne 0) {
     throw "Failed to create smoke assets."
 }
