@@ -22,7 +22,6 @@ from app.operations.remove_section import RemoveSectionAsImage
 from app.pdf_engine import apply_page_operations, open_document, save_document_copy
 from app.text_export import build_text, export_text_to_file, resolve_indices
 
-
 PAGE_HISTORY_LIMIT = 20
 
 
