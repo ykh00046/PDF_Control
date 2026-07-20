@@ -11,7 +11,7 @@ Provides a visual interface for managing PDF pages:
 
 import fitz
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QAction, QIcon, QImage, QPixmap
+from PySide6.QtGui import QAction, QIcon, QImage, QKeySequence, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QDialog,
@@ -65,6 +65,20 @@ class PageManagerDialog(QDialog):
         # Toolbar
         toolbar = QToolBar()
         toolbar.setIconSize(QSize(20, 20))
+
+        self.undo_action = QAction(tr("page_manager.undo"), self)
+        self.undo_action.setToolTip(tr("page_manager.undo.tooltip"))
+        self.undo_action.setShortcut(QKeySequence.StandardKey.Undo)
+        self.undo_action.triggered.connect(self._undo_page_change)
+        toolbar.addAction(self.undo_action)
+
+        self.redo_action = QAction(tr("page_manager.redo"), self)
+        self.redo_action.setToolTip(tr("page_manager.redo.tooltip"))
+        self.redo_action.setShortcut(QKeySequence.StandardKey.Redo)
+        self.redo_action.triggered.connect(self._redo_page_change)
+        toolbar.addAction(self.redo_action)
+
+        toolbar.addSeparator()
 
         self.rotate_left_action = QAction(tr("page_manager.rotate_left"), self)
         self.rotate_left_action.setToolTip(tr("page_manager.rotate_left.tooltip"))
@@ -159,6 +173,11 @@ class PageManagerDialog(QDialog):
 
         layout.addLayout(button_layout)
 
+        session = self.controller.session
+        if session:
+            session.page_history_changed.connect(self._update_history_actions)
+        self._update_history_actions()
+
     def _load_thumbnails(self):
         """Load page thumbnails from the document."""
         self.page_list.clear()
@@ -205,15 +224,17 @@ class PageManagerDialog(QDialog):
         if not selected:
             return
 
-        for item in selected:
-            row = self.page_list.row(item)
-            if self.controller.rotate_page(row, angle):
-                # Update thumbnail
-                page = self.controller.session.doc[row]
-                pixmap = self._render_thumbnail(page)
-                item.setIcon(QIcon(pixmap))
-                rotation_info = f" ({page.rotation}°)" if page.rotation != 0 else ""
-                item.setText(f"{row + 1}{rotation_info}")
+        session = self.controller.session
+        with session.page_change_group():
+            for item in selected:
+                row = self.page_list.row(item)
+                if self.controller.rotate_page(row, angle):
+                    # Update thumbnail
+                    page = self.controller.session.doc[row]
+                    pixmap = self._render_thumbnail(page)
+                    item.setIcon(QIcon(pixmap))
+                    rotation_info = f" ({page.rotation}°)" if page.rotation != 0 else ""
+                    item.setText(f"{row + 1}{rotation_info}")
 
         self._mark_changed()
         self.logger.info(f"Rotated {len(selected)} page(s) by {angle}°")
@@ -455,6 +476,28 @@ class PageManagerDialog(QDialog):
         self._changes_made = True
         self.pages_changed.emit()
         self._update_status()
+        self._update_history_actions()
+
+    def _undo_page_change(self):
+        session = self.controller.session
+        if session and session.undo_page_change():
+            self._load_thumbnails()
+            self._changes_made = session.modified
+            self.pages_changed.emit()
+            self._update_history_actions()
+
+    def _redo_page_change(self):
+        session = self.controller.session
+        if session and session.redo_page_change():
+            self._load_thumbnails()
+            self._changes_made = session.modified
+            self.pages_changed.emit()
+            self._update_history_actions()
+
+    def _update_history_actions(self):
+        session = self.controller.session
+        self.undo_action.setEnabled(bool(session and session.can_undo_page_change))
+        self.redo_action.setEnabled(bool(session and session.can_redo_page_change))
 
     def _update_status(self):
         """Update the status label."""

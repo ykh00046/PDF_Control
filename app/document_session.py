@@ -4,8 +4,11 @@ Split out of the former monolithic ``app/model.py`` (model-restructure).
 """
 
 import bisect
+import copy
 import os
-from typing import Any, Callable, Dict, List, Optional
+from contextlib import contextmanager
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, Iterator, List, Optional
 
 import fitz
 from PySide6.QtCore import QObject, Signal
@@ -20,9 +23,23 @@ from app.pdf_engine import apply_page_operations, open_document, save_document_c
 from app.text_export import build_text, export_text_to_file, resolve_indices
 
 
+PAGE_HISTORY_LIMIT = 20
+
+
+@dataclass
+class _PageState:
+    """In-memory snapshot for direct page mutations."""
+
+    document_bytes: bytes
+    history: List[Operation]
+    redo_stack: List[Operation]
+    modified: bool
+
+
 class DocumentSession(QObject):
     history_changed = Signal()
     warnings_changed = Signal()
+    page_history_changed = Signal()
 
     def __init__(self, file_path: str, password: Optional[str] = None) -> None:
         super().__init__()
@@ -38,6 +55,10 @@ class DocumentSession(QObject):
             self.pages: List[PageModel] = [PageModel(i) for i in range(self.doc.page_count)]
             self.history: List[Operation] = []
             self.redo_stack: List[Operation] = []
+            self._page_undo_stack: List[_PageState] = []
+            self._page_redo_stack: List[_PageState] = []
+            self._page_change_group_depth = 0
+            self._page_group_captured = False
             self.modified = False
             # Cache of most-recent preview warnings keyed by page_index.
             # Values are lists of dicts shaped like OpWarning (see operations_service).
@@ -171,6 +192,7 @@ class DocumentSession(QObject):
 
             self.history.clear()
             self.redo_stack.clear()
+            self._clear_page_history()
             self.modified = False
             self.history_changed.emit()
             log_file_operation("save", output_path, success=True)
@@ -180,11 +202,87 @@ class DocumentSession(QObject):
 
     # ── Page Management (direct document manipulation) ──────────────
 
+    def _snapshot_page_state(self) -> _PageState:
+        # Design Ref: page-undo-redo §5 — PDF and pending operations move together.
+        return _PageState(
+            document_bytes=self.doc.tobytes(),
+            history=copy.deepcopy(self.history),
+            redo_stack=copy.deepcopy(self.redo_stack),
+            modified=self.modified,
+        )
+
+    def _capture_page_state(self) -> None:
+        """Record one pre-mutation state and invalidate the page redo branch."""
+        if self._page_change_group_depth and self._page_group_captured:
+            return
+        self._page_undo_stack.append(self._snapshot_page_state())
+        del self._page_undo_stack[:-PAGE_HISTORY_LIMIT]
+        self._page_redo_stack.clear()
+        if self._page_change_group_depth:
+            self._page_group_captured = True
+        self.page_history_changed.emit()
+
+    def _restore_page_state(self, state: _PageState) -> None:
+        restored = fitz.open(stream=state.document_bytes, filetype="pdf")
+        self._bind_document(restored, self.file_path)
+        self.history = copy.deepcopy(state.history)
+        self.redo_stack = copy.deepcopy(state.redo_stack)
+        self.modified = state.modified
+        self.history_changed.emit()
+        self.page_history_changed.emit()
+
+    @property
+    def can_undo_page_change(self) -> bool:
+        return bool(self._page_undo_stack)
+
+    @property
+    def can_redo_page_change(self) -> bool:
+        return bool(self._page_redo_stack)
+
+    def undo_page_change(self) -> bool:
+        if not self._page_undo_stack:
+            return False
+        self._page_redo_stack.append(self._snapshot_page_state())
+        state = self._page_undo_stack.pop()
+        self._restore_page_state(state)
+        get_logger().info("Undid page change")
+        return True
+
+    def redo_page_change(self) -> bool:
+        if not self._page_redo_stack:
+            return False
+        self._page_undo_stack.append(self._snapshot_page_state())
+        del self._page_undo_stack[:-PAGE_HISTORY_LIMIT]
+        state = self._page_redo_stack.pop()
+        self._restore_page_state(state)
+        get_logger().info("Redid page change")
+        return True
+
+    @contextmanager
+    def page_change_group(self) -> Iterator[None]:
+        """Group several page mutations into one undo step."""
+        outermost = self._page_change_group_depth == 0
+        if outermost:
+            self._page_group_captured = False
+        self._page_change_group_depth += 1
+        try:
+            yield
+        finally:
+            self._page_change_group_depth -= 1
+            if outermost:
+                self._page_group_captured = False
+
+    def _clear_page_history(self) -> None:
+        self._page_undo_stack.clear()
+        self._page_redo_stack.clear()
+        self.page_history_changed.emit()
+
     def rotate_page(self, page_index: int, angle: int) -> None:
         """Rotate a page by the given angle (must be multiple of 90)."""
         if angle % 90 != 0:
             raise ValueError(f"Rotation angle must be a multiple of 90, got {angle}")
         page = self.doc[page_index]
+        self._capture_page_state()
         page.set_rotation((page.rotation + angle) % 360)
         self.pages[page_index].clear_cache()
         self.modified = True
@@ -194,6 +292,13 @@ class DocumentSession(QObject):
         """Delete pages by indices (0-based). Indices are sorted descending to avoid shifting."""
         if len(page_indices) >= self.doc.page_count:
             raise ValueError("Cannot delete all pages")
+        if not page_indices:
+            raise ValueError("page_indices must not be empty")
+        if len(set(page_indices)) != len(page_indices):
+            raise ValueError("page_indices must not contain duplicates")
+        if any(idx < 0 or idx >= self.doc.page_count for idx in page_indices):
+            raise IndexError("page index out of range")
+        self._capture_page_state()
         # Delete from last to first to keep indices stable
         for idx in sorted(page_indices, reverse=True):
             self.doc.delete_page(idx)
@@ -220,6 +325,7 @@ class DocumentSession(QObject):
         """
         if from_index == to_index:
             return
+        self._capture_page_state()
         self.doc.move_page(from_index, to_index)
 
         def remap(p: int) -> int:
@@ -244,6 +350,7 @@ class DocumentSession(QObject):
             insert_at = self.doc.page_count
         else:
             insert_at = after_index + 1
+        self._capture_page_state()
         self.doc.new_page(insert_at, width=width, height=height)
         # Adjust operation indices
         for op in self.history:
@@ -285,6 +392,7 @@ class DocumentSession(QObject):
             raise ValueError("new_order must be a permutation of all page indices")
         if new_order == list(range(page_count)):
             return
+        self._capture_page_state()
         self.doc.select(new_order)
         position_of = {old: new for new, old in enumerate(new_order)}
         self._remap_history_after_reorder(lambda p: position_of[p])
@@ -306,6 +414,7 @@ class DocumentSession(QObject):
         for idx in page_indices:
             if idx < 0 or idx >= page_count:
                 raise IndexError(f"page index out of range: {idx}")
+        self._capture_page_state()
         for idx in sorted(page_indices, reverse=True):
             current_count = self.doc.page_count
             target = idx + 1 if idx + 1 < current_count else -1
@@ -367,6 +476,8 @@ class DocumentSession(QObject):
         page_count = self.doc.page_count
         if after_index != -1 and (after_index < 0 or after_index >= page_count):
             raise ValueError(f"after_index out of range: {after_index}")
+
+        self._capture_page_state()
 
         # Insertion cursor advances past each batch so order is preserved.
         insert_start = page_count if after_index == -1 else after_index + 1
@@ -496,6 +607,7 @@ class DocumentSession(QObject):
 
     def close(self) -> None:
         if self.doc:
+            self._clear_page_history()
             log_file_operation("close", self.file_path, success=True)
             self.doc.close()
             self.doc = None

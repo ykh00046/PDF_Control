@@ -10,6 +10,8 @@ dist/
 
 logs/
 
+.playwright-mcp/
+
 docs/.bkit-memory.json
 docs/.pdca-status.json
 docs/.pdca-snapshots/
