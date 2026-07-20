@@ -41,6 +41,7 @@ from app.handlers import (
 )
 from app.i18n import load_translations, tr
 from app.logger import get_logger, setup_logger
+from app.thumbnail_panel import ThumbnailSidebar
 from app.ui_menu import MenuBuilder, ShortcutBuilder
 from app.ui_statusbar import StatusBarManager
 from app.ui_toolbar import ToolbarBuilder
@@ -134,6 +135,19 @@ class MainWindow(
         # Keep toggle action (created later) in sync with dock visibility.
         self.history_dock.visibilityChanged.connect(
             lambda visible: hasattr(self, "toggle_history_action") and self.toggle_history_action.setChecked(visible)
+        )
+
+        # Page Thumbnail Sidebar
+        self.thumbnail_dock = QDockWidget(tr("thumbnail_panel.title"), self)
+        self.thumbnail_panel = ThumbnailSidebar()
+        self.thumbnail_dock.setWidget(self.thumbnail_panel)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.thumbnail_dock)
+        self.thumbnail_panel.page_selected.connect(self._go_to_page)
+
+        self.thumbnail_dock.setVisible(get_config_value(self.config, "ui", "thumbnail_panel_visible", default=True))
+        self.thumbnail_dock.visibilityChanged.connect(
+            lambda visible: hasattr(self, "toggle_thumbnails_action")
+            and self.toggle_thumbnails_action.setChecked(visible)
         )
 
     # --------------------------------------------------- Qt event overrides

@@ -116,6 +116,11 @@ class MenuBuilder:
         win.toggle_history_action.toggled.connect(win._toggle_history_panel)
         view_menu.addAction(win.toggle_history_action)
 
+        win.toggle_thumbnails_action = QAction(tr("menu.view.thumbnails_toggle"), win, checkable=True)
+        win.toggle_thumbnails_action.setChecked(win.thumbnail_dock.isVisible())
+        win.toggle_thumbnails_action.toggled.connect(win._toggle_thumbnail_panel)
+        view_menu.addAction(win.toggle_thumbnails_action)
+
     # --------------------------------------------------------------- Tools
     def _build_tools_menu(self) -> None:
         win = self._win

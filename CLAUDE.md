@@ -211,6 +211,10 @@ _None currently tracked. Open a new item here if one surfaces._
 
 - ~~텍스트 내보내기 "페이지 범위" 끊긴 연결~~: `TextExportDialog`에 range 라디오/입력란은 있었으나 `get_settings()`가 range를 버려(scope를 all/current로만, range_edit 미독) 범위 선택 시 **현재 페이지만 조용히 내보내짐**. 또 `tr()`로 참조하는 `text_export.scope.range`/`range.placeholder` i18n 키가 en/ko 양쪽에 **없었음**(패리티 동수라 미검출). 수정: get_settings 3-scope+range 반환, `apply_text_export`가 기존 `parse_page_ranges`(재사용) 파싱→평탄화→`resolve_indices` 정렬·중복제거. ValueError 안전 중단. 누락 i18n 3키 복구. 백엔드 신규 0(연결만). 287 tests pass. 후보: validate_i18n에 tr() 참조 키 검증 추가.
 
+### Added (2026-07-20, thumbnail-sidebar PDCA)
+
+- **페이지 썸네일 사이드바**: 좌측 도크 `ThumbnailSidebar`(`app/thumbnail_panel.py`) — 클릭 탐색, 뷰어와 양방향 하이라이트 동기화(`_syncing` 재진입 가드), 페이지 관리 변경 시 갱신(회전 각도 라벨). **fitz 스레드 비안전 → QTimer(0) 배치 렌더**(8p/틱) + 세대 카운터로 닫힌 doc 접근 차단, `flush_pending_renders()` 테스트용. DRY: fitz→QPixmap 변환을 `app/thumbnails.py`로 추출(PageManagerDialog 위임, 죽은 THUMB_DPI 제거), 스핀박스 점프를 신설 `_go_to_page`로 통합(경계 가드 추가). `ui.thumbnail_panel_visible` config + View 메뉴 토글(히스토리 패널 패턴). i18n 2키. 331 tests pass(신규 9). 보류: 썸네일 pending op 미리보기, 사이드바 컨텍스트 메뉴.
+
 ### Added (2026-07-20, packaging-hardening PDCA)
 
 - **패키징 보류 3건 폐쇄**: (1) CI `build` 잡 신설 — main push 시 PyInstaller 빌드+frozen 워커/GUI 스모크 게이트 + zip 아티팩트(7일), `PDF_CONTROL_PYTHON`을 setup-python 인터프리터로 고정(러너 py-launcher 오해석 방지). PR은 test 잡만(77MB 아티팩트 절약). (2) 코드 서명 준비 — `release_windows.ps1 -SignThumbprint`(또는 env)로 `Set-AuthenticodeSignature`(SHA256+타임스탬프), 자가서명은 경고 후 진행, manifest `signed` 필드. 실제 인증서 확보는 조직 결정(report 참조). (3) **UPX won't-do 확정** — Qt DLL 압축은 로더 크래시·백신 오탐 원인이고 zip 전달(177→77MB)이라 이득 없음, spec `upx=False`+근거 주석. 로컬 파이프라인 재검증 통과.

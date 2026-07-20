@@ -11,7 +11,7 @@ Provides a visual interface for managing PDF pages:
 
 import fitz
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QAction, QIcon, QImage, QKeySequence, QPixmap
+from PySide6.QtGui import QAction, QIcon, QKeySequence, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QDialog,
@@ -31,9 +31,8 @@ from app.logger import get_logger
 from app.page_split import compute_split_groups
 from app.split_dialog import SplitDialog
 
-# Thumbnail rendering constants
-THUMB_WIDTH = 120
-THUMB_DPI = 72
+# Thumbnail rendering (shared with the sidebar via app.thumbnails)
+from app.thumbnails import THUMB_WIDTH, render_page_thumbnail
 
 
 class PageManagerDialog(QDialog):
@@ -202,21 +201,7 @@ class PageManagerDialog(QDialog):
 
     def _render_thumbnail(self, page: fitz.Page) -> QPixmap:
         """Render a page thumbnail as QPixmap."""
-        # Calculate scale to fit THUMB_WIDTH
-        page_rect = page.rect
-        scale = THUMB_WIDTH / page_rect.width if page_rect.width > 0 else 1.0
-        matrix = fitz.Matrix(scale, scale)
-
-        pix = page.get_pixmap(matrix=matrix)
-
-        # Convert to QImage
-        if pix.alpha:
-            fmt = QImage.Format_RGBA8888
-        else:
-            fmt = QImage.Format_RGB888
-
-        qimage = QImage(pix.samples, pix.width, pix.height, pix.stride, fmt)
-        return QPixmap.fromImage(qimage)
+        return render_page_thumbnail(page, THUMB_WIDTH)
 
     def _rotate_selected(self, angle: int):
         """Rotate all selected pages by the given angle."""

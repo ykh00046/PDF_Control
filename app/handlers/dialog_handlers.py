@@ -284,6 +284,8 @@ class DialogHandlerMixin:
     def _on_pages_changed(self: "MainWindow") -> None:  # type: ignore[misc]
         """Handle page structure changes from page manager."""
         self.viewer.image_cache.clear()
+        self.thumbnail_panel.refresh()
+        self.thumbnail_panel.set_current_page(self.viewer.current_page_index)
 
     # --- Text export ----------------------------------------------------
     def open_text_export_dialog(self: "MainWindow") -> None:  # type: ignore[misc]

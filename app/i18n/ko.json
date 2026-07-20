@@ -32,6 +32,8 @@
   "menu.view.zoom_out": "축소",
   "menu.view.fit_to_width": "너비에 맞춤",
   "menu.view.history_toggle": "히스토리 패널 표시",
+  "menu.view.thumbnails_toggle": "페이지 썸네일 표시",
+  "thumbnail_panel.title": "페이지",
   "menu.tools": "도구",
   "menu.tools.batch_replace": "일괄 찾기/바꾸기",
   "menu.help": "도움말",

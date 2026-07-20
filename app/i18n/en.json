@@ -32,6 +32,8 @@
   "menu.view.zoom_out": "Zoom Out",
   "menu.view.fit_to_width": "Fit to Width",
   "menu.view.history_toggle": "Show History Panel",
+  "menu.view.thumbnails_toggle": "Show Page Thumbnails",
+  "thumbnail_panel.title": "Pages",
   "menu.tools": "Tools",
   "menu.tools.batch_replace": "Batch Find/Replace",
   "menu.help": "Help",

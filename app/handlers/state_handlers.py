@@ -38,6 +38,8 @@ class StateUpdateMixin:
             self._wired_session = session
         self.statusBar().showMessage(tr("status.opened", file_path))
         self.setWindowTitle(f"{tr('app.title')} - {os.path.basename(file_path)}")
+        self.thumbnail_panel.set_session(session)
+        self.thumbnail_panel.set_current_page(self.viewer.current_page_index)
         self._update_edit_action_states()
         self._update_history_panel()
         self._refresh_warning_indicator()
@@ -51,6 +53,7 @@ class StateUpdateMixin:
     def on_document_closed(self: "MainWindow") -> None:  # type: ignore[misc]
         """Handle document closed signal."""
         self.viewer.set_document_session(None)
+        self.thumbnail_panel.set_session(None)
         self.setWindowTitle(tr("app.title"))
         self._update_edit_action_states()
         self._update_history_panel()
@@ -69,6 +72,7 @@ class StateUpdateMixin:
     def _handle_page_changed(self: "MainWindow", page_index: int) -> None:  # type: ignore[misc]
         self.last_selected_rect = None
         self.viewer.clear_selection()
+        self.thumbnail_panel.set_current_page(page_index)
         self._update_edit_action_states()
         self._update_status_bar_page_info()
 
@@ -172,6 +176,8 @@ class StateUpdateMixin:
             self.fit_to_width_action.setEnabled(True)
             self.history_dock.setEnabled(True)
             self.toggle_history_action.setEnabled(True)
+            self.thumbnail_dock.setEnabled(True)
+            self.toggle_thumbnails_action.setEnabled(True)
         else:
             self.undo_action.setEnabled(False)
             self.redo_action.setEnabled(False)
@@ -184,6 +190,8 @@ class StateUpdateMixin:
             self.fit_to_width_action.setEnabled(False)
             self.history_dock.setEnabled(False)
             self.toggle_history_action.setEnabled(False)
+            self.thumbnail_dock.setEnabled(False)
+            self.toggle_thumbnails_action.setEnabled(False)
 
     def _toggle_history_panel(  # type: ignore[misc]
         self: "MainWindow", checked: bool
@@ -192,14 +200,29 @@ class StateUpdateMixin:
         set_config_value(self.config, "ui", "history_panel_visible", value=checked)
         save_config(self.config)
 
+    def _toggle_thumbnail_panel(  # type: ignore[misc]
+        self: "MainWindow", checked: bool
+    ) -> None:
+        self.thumbnail_dock.setVisible(checked)
+        set_config_value(self.config, "ui", "thumbnail_panel_visible", value=checked)
+        save_config(self.config)
+
+    def _go_to_page(self: "MainWindow", page_index: int) -> None:  # type: ignore[misc]
+        """Navigate the viewer to a page (spinbox jump, thumbnail click)."""
+        session = self.controller.session
+        if not session:
+            return
+        if page_index < 0 or page_index >= session.doc.page_count:
+            return
+        if page_index == self.viewer.current_page_index:
+            return
+        self.viewer.current_page_index = page_index
+        self.viewer.page_changed.emit(page_index)
+        self.viewer.request_render()
+
     def _on_page_spinbox_changed(  # type: ignore[misc]
         self: "MainWindow", value: int
     ) -> None:
         """Handle page jump from spinbox."""
-        if not self.controller.session:
-            return
-        target_index = value - 1  # SpinBox is 1-indexed, viewer is 0-indexed.
-        if target_index != self.viewer.current_page_index:
-            self.viewer.current_page_index = target_index
-            self.viewer.page_changed.emit(target_index)
-            self.viewer.request_render()
+        # SpinBox is 1-indexed, viewer is 0-indexed.
+        self._go_to_page(value - 1)

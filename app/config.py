@@ -65,7 +65,7 @@ DEFAULT_CONFIG = {
     "window": {"width": 1200, "height": 800, "x": 100, "y": 100},
     "last_directory": "",
     "zoom_level": 1.0,
-    "ui": {"history_panel_visible": True},
+    "ui": {"history_panel_visible": True, "thumbnail_panel_visible": True},
     "memory": {
         "remove_section_dpi_cap_mb": 500,
         "remove_section_large_warn_mb": 100,
