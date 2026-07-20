@@ -6,6 +6,11 @@ PyInstaller spec for PDF Control.
 The app now launches a separate render worker process for previews, so onedir is
 preferred over onefile. Re-spawning a onefile executable for every preview would
 reintroduce unpack/startup overhead into the render path.
+
+UPX is deliberately disabled (2026-07-20): compressing Qt/PySide6 DLLs is a
+known source of loader crashes and antivirus false positives, and delivery is
+a zip anyway (onedir 177MB -> 77MB zipped), so the size win doesn't justify
+the risk for an unsigned in-house binary.
 """
 
 block_cipher = None
@@ -101,7 +106,7 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,
@@ -118,7 +123,7 @@ coll = COLLECT(
     a.zipfiles,
     a.datas,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     name="PDF_Control",
 )

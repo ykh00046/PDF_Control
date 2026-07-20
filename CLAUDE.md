@@ -211,6 +211,10 @@ _None currently tracked. Open a new item here if one surfaces._
 
 - ~~텍스트 내보내기 "페이지 범위" 끊긴 연결~~: `TextExportDialog`에 range 라디오/입력란은 있었으나 `get_settings()`가 range를 버려(scope를 all/current로만, range_edit 미독) 범위 선택 시 **현재 페이지만 조용히 내보내짐**. 또 `tr()`로 참조하는 `text_export.scope.range`/`range.placeholder` i18n 키가 en/ko 양쪽에 **없었음**(패리티 동수라 미검출). 수정: get_settings 3-scope+range 반환, `apply_text_export`가 기존 `parse_page_ranges`(재사용) 파싱→평탄화→`resolve_indices` 정렬·중복제거. ValueError 안전 중단. 누락 i18n 3키 복구. 백엔드 신규 0(연결만). 287 tests pass. 후보: validate_i18n에 tr() 참조 키 검증 추가.
 
+### Added (2026-07-20, packaging-hardening PDCA)
+
+- **패키징 보류 3건 폐쇄**: (1) CI `build` 잡 신설 — main push 시 PyInstaller 빌드+frozen 워커/GUI 스모크 게이트 + zip 아티팩트(7일), `PDF_CONTROL_PYTHON`을 setup-python 인터프리터로 고정(러너 py-launcher 오해석 방지). PR은 test 잡만(77MB 아티팩트 절약). (2) 코드 서명 준비 — `release_windows.ps1 -SignThumbprint`(또는 env)로 `Set-AuthenticodeSignature`(SHA256+타임스탬프), 자가서명은 경고 후 진행, manifest `signed` 필드. 실제 인증서 확보는 조직 결정(report 참조). (3) **UPX won't-do 확정** — Qt DLL 압축은 로더 크래시·백신 오탐 원인이고 zip 전달(177→77MB)이라 이득 없음, spec `upx=False`+근거 주석. 로컬 파이프라인 재검증 통과.
+
 ### Added (2026-07-20, pyinstaller-packaging PDCA)
 
 - **패키징 첫 실측 검증 (Phase 5 완료)**: 기존 spec/스크립트(`pdf_control.spec` onedir, `scripts/build_windows.ps1`·`smoke_frozen.ps1`·`release_windows.ps1`)가 미검증 상태였던 것을 end-to-end 검증. PyInstaller 6.16.0+py3.13 onedir 176MB, frozen 렌더 워커(`--render-worker`) 65ms success, GUI 스모크(i18n ko 로드·config/log 정상). **발견 버그**: 스크립트가 `Get-Command python`으로 무관한 3.11 agent venv를 잡을 수 있던 것 → `scripts/resolve_python.ps1`(`PDF_CONTROL_PYTHON`→`py -3.13`→폴백) 공유 해석기로 수정. `requirements-build.txt` `pyinstaller==6.16.0` 핀. `release_windows.ps1` 1회로 zip+SHA256 산출. 322 tests pass(앱 코드 무변경). 보류: CI 빌드 잡, 코드 서명, UPX.
@@ -304,7 +308,7 @@ _None currently tracked. Open a new item here if one surfaces._
 
 ### Risks
 
-- Packaging: 미서명 exe(SmartScreen 경고)·UPX 미적용(176MB)·CI 빌드 잡 부재 — 배포 대상이 생기면 처리 (frozen 동작 자체는 2026-07-20 검증 완료)
+- Packaging: 미서명 exe(SmartScreen 경고) — 해소는 인증서 구매(OV/EV) 또는 자가서명+사내 신뢰 배포라는 **사용자/조직 결정** 대기. 파이프라인 자체는 서명 준비 완료(`release_windows.ps1 -SignThumbprint`)
 - Memory usage: Large section removal with high DPI - mitigated via auto-cap, monitor logs
 - Save-time operation application is synchronous on the UI thread (all ops, incl. high-DPI RemoveSection) — a save with heavy pending ops can block the UI for seconds. Async save (worker + session rebind) is a candidate for a future cycle. (noted 2026-06-11, r7-history-policy)
 

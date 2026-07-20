@@ -25,3 +25,33 @@ jobs:
       # The suite already includes the mypy strict gate (tests/test_mypy.py),
       # the i18n validation, and the CLAUDE.md drift guard.
       - run: python -m pytest tests -q
+
+  build:
+    # Packaging gate: PyInstaller build + frozen worker/GUI smoke, so a
+    # dependency or spec change that breaks the frozen app fails CI instead
+    # of being discovered at release time. Main pushes only — PRs are
+    # covered by the test job and don't need the ~77MB artifact.
+    if: github.event_name == 'push'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r requirements-build.txt
+      # Pin the build scripts to setup-python's interpreter; the runner's
+      # py-launcher may resolve -3.13 to a different install without deps.
+      - name: Resolve interpreter
+        run: echo "PDF_CONTROL_PYTHON=$((Get-Command python).Source)" >> $env:GITHUB_ENV
+      - name: Build (onedir)
+        run: ./scripts/build_windows.ps1
+      - name: Frozen smoke (worker + GUI)
+        run: ./scripts/smoke_frozen.ps1
+      - name: Package artifact
+        run: Compress-Archive -Path dist\PDF_Control -DestinationPath dist\PDF_Control_windows.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PDF_Control-windows
+          path: dist/PDF_Control_windows.zip
+          retention-days: 7
