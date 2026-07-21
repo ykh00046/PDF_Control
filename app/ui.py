@@ -180,15 +180,25 @@ class MainWindow(
 
     # --------------------------------------------------------------- styles
     def _apply_styles(self) -> None:
-        # Explicit text color alongside background to avoid white-on-white on
-        # Windows dark mode (OS provides light foreground without our override).
+        # The app forces a light theme. On Windows dark mode the OS supplies a
+        # dark palette, so every surface that hosts our dark text (#1a1a1a)
+        # MUST also pin a light background here, or the text renders dark-on-
+        # dark and disappears. This includes popups (QMenu, QMessageBox,
+        # QDialog, QComboBox drop-downs, QToolTip) that are separate top-level
+        # windows. QMenu::item also needs explicit padding: once a stylesheet
+        # touches QMenu, Qt drops native item metrics and the label collides
+        # with its shortcut text without a right pad.
         self.setStyleSheet(
             """
             QMainWindow { background: #f7f8fa; color: #1a1a1a; }
+            QDialog { background: #f7f8fa; color: #1a1a1a; }
             QMenuBar { background: #f0f2f5; color: #1a1a1a; }
             QMenuBar::item:selected { background: #d0d4da; }
-            QMenu { background: #ffffff; color: #1a1a1a; }
+            QMenu { background: #ffffff; color: #1a1a1a; border: 1px solid #d0d4da; }
+            QMenu::item { padding: 5px 28px 5px 24px; }
             QMenu::item:selected { background: #0078d4; color: #ffffff; }
+            QMenu::item:disabled { color: #a0a0a0; }
+            QMenu::separator { height: 1px; background: #e0e2e6; margin: 4px 8px; }
             QToolBar { spacing: 6px; padding: 4px 6px; background: #f0f2f5; border: 1px solid #e0e2e6; color: #1a1a1a; }
             QToolBar QToolButton { color: #1a1a1a; }
             QStatusBar { background: #f7f8fa; color: #1a1a1a; }
@@ -199,5 +209,25 @@ class MainWindow(
             QListWidget::item:alternate { background: #f5f6f8; }
             QSpinBox { background: #ffffff; color: #1a1a1a; border: 1px solid #ccc; padding: 2px; }
             QLabel { color: #1a1a1a; }
+            QMessageBox { background: #f7f8fa; }
+            QMessageBox QLabel { color: #1a1a1a; }
+            QLineEdit, QTextEdit, QPlainTextEdit {
+                background: #ffffff; color: #1a1a1a; border: 1px solid #ccc; padding: 2px;
+            }
+            QComboBox { background: #ffffff; color: #1a1a1a; border: 1px solid #ccc; padding: 2px; }
+            QComboBox QAbstractItemView {
+                background: #ffffff; color: #1a1a1a;
+                selection-background-color: #0078d4; selection-color: #ffffff;
+            }
+            QCheckBox { color: #1a1a1a; }
+            QRadioButton { color: #1a1a1a; }
+            QGroupBox { color: #1a1a1a; }
+            QPushButton {
+                background: #ffffff; color: #1a1a1a; border: 1px solid #ccc;
+                padding: 4px 12px; border-radius: 3px;
+            }
+            QPushButton:hover { background: #eef4fb; }
+            QPushButton:disabled { color: #a0a0a0; background: #f0f0f0; }
+            QToolTip { background: #ffffff; color: #1a1a1a; border: 1px solid #ccc; }
             """
         )

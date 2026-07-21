@@ -211,6 +211,10 @@ _None currently tracked. Open a new item here if one surfaces._
 
 - ~~텍스트 내보내기 "페이지 범위" 끊긴 연결~~: `TextExportDialog`에 range 라디오/입력란은 있었으나 `get_settings()`가 range를 버려(scope를 all/current로만, range_edit 미독) 범위 선택 시 **현재 페이지만 조용히 내보내짐**. 또 `tr()`로 참조하는 `text_export.scope.range`/`range.placeholder` i18n 키가 en/ko 양쪽에 **없었음**(패리티 동수라 미검출). 수정: get_settings 3-scope+range 반환, `apply_text_export`가 기존 `parse_page_ranges`(재사용) 파싱→평탄화→`resolve_indices` 정렬·중복제거. ValueError 안전 중단. 누락 i18n 3키 복구. 백엔드 신규 0(연결만). 287 tests pass. 후보: validate_i18n에 tr() 참조 키 검증 추가.
 
+### Resolved (2026-07-21, dark-mode-ui-fix PDCA)
+
+- ~~다크모드에서 메뉴 라벨/단축키 겹침 + 팝업 텍스트가 배경에 묻힘~~: 빌드 결과물에서 사용자가 발견. 원인은 `app/ui.py::_apply_styles`가 라이트 테마를 강제(모든 곳에 dark text #1a1a1a)하면서 **팝업 표면의 밝은 배경과 QMenu item padding을 빠뜨린 것** — OS 다크모드에서만 깨짐(dev/frozen 무관, 스타일시트 동일). (1) `QMenu`에 스타일시트가 닿으면 Qt가 네이티브 item 메트릭을 버려 라벨과 shortcut이 우측 여백 없이 충돌 → `QMenu::item { padding: 5px 28px 5px 24px }` 명시(+disabled/separator). (2) QMessageBox/QDialog/QComboBox 드롭다운/QToolTip 등 **별도 top-level 팝업**이 dark 팔레트 배경을 유지해 #1a1a1a 텍스트가 dark-on-dark로 사라짐 → 각 표면에 밝은 배경 pin(+QLineEdit/QComboBox/QPushButton/QCheckBox 등 다이얼로그 위젯 라이트화). offscreen grab 이미지로 before/after 실측 확인. 회귀 방지 `tests/test_ui_styles.py`(필수 셀렉터 존재 검증). 334 tests pass.
+
 ### Added (2026-07-20, thumbnail-sidebar PDCA)
 
 - **페이지 썸네일 사이드바**: 좌측 도크 `ThumbnailSidebar`(`app/thumbnail_panel.py`) — 클릭 탐색, 뷰어와 양방향 하이라이트 동기화(`_syncing` 재진입 가드), 페이지 관리 변경 시 갱신(회전 각도 라벨). **fitz 스레드 비안전 → QTimer(0) 배치 렌더**(8p/틱) + 세대 카운터로 닫힌 doc 접근 차단, `flush_pending_renders()` 테스트용. DRY: fitz→QPixmap 변환을 `app/thumbnails.py`로 추출(PageManagerDialog 위임, 죽은 THUMB_DPI 제거), 스핀박스 점프를 신설 `_go_to_page`로 통합(경계 가드 추가). `ui.thumbnail_panel_visible` config + View 메뉴 토글(히스토리 패널 패턴). i18n 2키. 331 tests pass(신규 9). 보류: 썸네일 pending op 미리보기, 사이드바 컨텍스트 메뉴.
