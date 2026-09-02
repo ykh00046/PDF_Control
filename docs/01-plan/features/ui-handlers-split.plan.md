@@ -69,7 +69,7 @@
 ## 7. Acceptance Test
 
 ```bash
-cd C:/X/Tools/PDF_Control
+cd C:/X/PDF_Control
 # 1) 기존 import가 그대로 동작
 python -c "from app.ui_handlers import FileHandlerMixin, EditHandlerMixin, DialogHandlerMixin, StateUpdateMixin; print('OK')"
 # 2) 신규 import 경로도 동작

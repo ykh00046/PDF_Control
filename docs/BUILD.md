@@ -77,10 +77,10 @@ This is useful for diagnosing packaging issues without launching the full GUI.
 ## Troubleshooting
 
 `Missing translations`
-Check that `app/i18n/*.json` is present in `datas` inside [pdf_control.spec](/C:/X/Tools/PDF_Control/pdf_control.spec).
+Check that `app/i18n/*.json` is present in `datas` inside [pdf_control.spec](/C:/X/PDF_Control/pdf_control.spec).
 
 `Preview render works in dev but not in frozen build`
-Verify [app/render_worker.py](/C:/X/Tools/PDF_Control/app/render_worker.py) and [app/pdf_engine.py](/C:/X/Tools/PDF_Control/app/pdf_engine.py) remain included in `hiddenimports`.
+Verify [app/render_worker.py](/C:/X/PDF_Control/app/render_worker.py) and [app/pdf_engine.py](/C:/X/PDF_Control/app/pdf_engine.py) remain included in `hiddenimports`.
 
 `Executable starts but Defender warns`
 Unsigned Windows binaries often trigger reputation checks. For external distribution, code signing is the next step after build validation.

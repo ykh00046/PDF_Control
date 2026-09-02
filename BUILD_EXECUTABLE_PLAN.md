@@ -20,9 +20,9 @@ Why:
 
 ## Required Inputs
 
-- [pdf_control.spec](/C:/X/Tools/PDF_Control/pdf_control.spec)
-- [requirements-build.txt](/C:/X/Tools/PDF_Control/requirements-build.txt)
-- [scripts/build_windows.ps1](/C:/X/Tools/PDF_Control/scripts/build_windows.ps1)
+- [pdf_control.spec](/C:/X/PDF_Control/pdf_control.spec)
+- [requirements-build.txt](/C:/X/PDF_Control/requirements-build.txt)
+- [scripts/build_windows.ps1](/C:/X/PDF_Control/scripts/build_windows.ps1)
 
 ## Packaging Checklist
 

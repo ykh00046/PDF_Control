@@ -112,7 +112,7 @@ assert A is B is C    # ✅
 
 ### Acceptance Test Re-run
 ```bash
-cd C:/X/Tools/PDF_Control
+cd C:/X/PDF_Control
 PYTHONPATH=. py -3.13 -m pytest tests/ --ignore=tests/test_pyinstaller_bundling.py -q
 # → 112 passed
 py -3.13 -m mypy app/operations_service.py

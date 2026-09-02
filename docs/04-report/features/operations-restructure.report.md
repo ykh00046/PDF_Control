@@ -177,7 +177,7 @@ Success: no issues found in 4 source files
 
 ### Acceptance Test Re-run
 ```bash
-cd C:/X/Tools/PDF_Control
+cd C:/X/PDF_Control
 $env:QT_QPA_PLATFORM='offscreen'; py -3.13 -m pytest tests/ -q
 # → 127 passed
 py -3.13 -m mypy -p app.operations
