@@ -20,6 +20,18 @@ class TextMetadata(TypedDict):
     # First-line baseline y of the source text (None when no text was found).
     # Used to anchor the replacement on the original baseline (text-fidelity).
     baseline: Optional[float]
+    # Distance between consecutive source baselines (None for a single line);
+    # multi-line replacements reuse it so paragraph leading is preserved.
+    line_pitch: Optional[float]
+    # How far the replacement may extend on the same line before hitting the
+    # next glyph / vertical rule (None -> no probe, stay inside the rect).
+    limit_left: Optional[float]
+    limit_right: Optional[float]
+    # Text that was inside the rect (drives auto alignment: numbers -> right).
+    source_text: str
+    # A glyph immediately follows the rect on its line (mid-sentence), so a
+    # numeric source stays left-aligned instead of keeping its right edge.
+    glyph_after: bool
 
 
 class ApplyMode(Enum):

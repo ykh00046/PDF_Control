@@ -9,6 +9,16 @@ import fitz
 
 from app.operations.base import Operation
 
+RGB = Tuple[float, float, float]
+WHITE: RGB = (1.0, 1.0, 1.0)
+
+# RedactReplace.align values (PyMuPDF convention for 0/1/2, -1 = decide from
+# the source text: numbers/amounts right-align, everything else left).
+ALIGN_AUTO = -1
+ALIGN_LEFT = 0
+ALIGN_CENTER = 1
+ALIGN_RIGHT = 2
+
 
 class RedactDelete(Operation):
     """Represents a redaction operation to delete content."""
@@ -16,9 +26,10 @@ class RedactDelete(Operation):
     def __init__(self, page_index: int, rects: List[fitz.Rect]) -> None:
         super().__init__(page_index, rects)
 
-    def apply(self, page: fitz.Page) -> None:
+    def apply(self, page: fitz.Page, fill: Optional[RGB] = None) -> None:
+        """Queue redaction annotations; ``fill`` is the sampled page background."""
         for rect in self.rects:
-            page.add_redact_annot(rect, fill=(1, 1, 1))
+            page.add_redact_annot(rect, fill=fill or WHITE)
 
     def to_dict(self) -> Dict[str, Any]:
         return super().to_dict()
@@ -34,7 +45,7 @@ class RedactReplace(Operation):
         new_text: str,
         fontname: str = "helv",
         fontsize: float = 0,
-        align: int = 0,
+        align: int = ALIGN_AUTO,
         fontfile: Optional[str] = None,
         color: Optional[Tuple[float, float, float]] = None,
         font_flags: int = 0,
@@ -54,9 +65,10 @@ class RedactReplace(Operation):
         #   False -> skip wrapping, shrink the font instead
         self.wrap = wrap
 
-    def apply(self, page: fitz.Page) -> None:
+    def apply(self, page: fitz.Page, fill: Optional[RGB] = None) -> None:
+        """Queue redaction annotations; ``fill`` is the sampled page background."""
         for rect in self.rects:
-            page.add_redact_annot(rect, fill=(1, 1, 1))
+            page.add_redact_annot(rect, fill=fill or WHITE)
 
     def to_dict(self) -> Dict[str, Any]:
         data = super().to_dict()

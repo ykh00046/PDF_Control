@@ -10,11 +10,13 @@ import os
 from typing import TYPE_CHECKING
 
 import fitz
-from PySide6.QtWidgets import QInputDialog, QLineEdit, QMessageBox
+from PySide6.QtWidgets import QMessageBox
 
 from app.config import save_config, set_config_value
 from app.i18n import tr
 from app.model import RedactDelete, RedactReplace
+from app.operations.redact import ALIGN_AUTO
+from app.replace_dialog import ReplaceTextDialog
 from app.text_utils import contains_hangul
 
 if TYPE_CHECKING:
@@ -90,24 +92,22 @@ class EditHandlerMixin:
             return selection_rect, page.get_textbox(selection_rect).strip()
 
     def _prompt_replacement_text(self: "MainWindow", existing_text):  # type: ignore[misc]
-        """Open input dialog; returns replacement string or None on cancel/error."""
+        """Open the replace dialog; returns its settings dict or None on cancel/error.
+
+        The dict carries ``text`` plus layout options (``align``, ``wrap``,
+        ``fontsize``) that :class:`RedactReplace` understands.
+        """
         try:
-            text, ok = QInputDialog.getText(
-                self,
-                tr("dialog.replace.title"),
-                tr("dialog.replace.prompt"),
-                QLineEdit.Normal,
-                existing_text,
-            )
+            settings = ReplaceTextDialog.prompt(existing_text, self)
         except Exception as e:
-            self.logger.error(f"Failed to open input dialog: {e}")
+            self.logger.error(f"Failed to open replace dialog: {e}")
             self.statusBar().showMessage(tr("dialog.error"))
             return None
-        if not ok or text is None:
+        if settings is None or settings.get("text") is None:
             self.logger.info("User cancelled replace dialog")
             self.statusBar().showMessage(tr("status.cancelled_replace"))
             return None
-        return text
+        return settings
 
     def _resolve_replacement_font(  # type: ignore[misc]
         self: "MainWindow",
@@ -156,24 +156,30 @@ class EditHandlerMixin:
         page = self.controller.session.doc[page_index]
         target_rect, existing_text = self._snap_selection_to_text(page, self.last_selected_rect)
 
-        replacement_text = self._prompt_replacement_text(existing_text)
-        if replacement_text is None:
+        settings = self._prompt_replacement_text(existing_text)
+        if settings is None:
             return
+        replacement_text = settings["text"]
 
         try:
             from app.model import _extract_text_metadata
 
             meta = _extract_text_metadata(page, target_rect)
             font_path = self._resolve_replacement_font(replacement_text, meta["fontname"], meta["font_flags"])
+            # fontsize 0 = "same as source": the applicator re-extracts it at
+            # apply time (preview and save share that path).
+            chosen_size = float(settings.get("fontsize") or 0.0)
             operation = RedactReplace(
                 page_index,
                 [target_rect],
                 replacement_text,
                 fontname=meta["fontname"],
                 fontfile=font_path,
-                fontsize=meta["fontsize"],
+                fontsize=chosen_size if chosen_size > 0 else meta["fontsize"],
                 color=meta["color"],
                 font_flags=meta["font_flags"],
+                align=settings.get("align", ALIGN_AUTO),
+                wrap=settings.get("wrap"),
             )
             if not self.controller.add_operation(operation):
                 return

@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Improved (natural text replacement): replaced text now sits exactly on the original line (it previously floated about 1.4pt above it), keeps table figures right-aligned (and prose left-aligned) automatically, fills the cleared area with the page's real background color instead of white, grows into free space on the line before it wraps or shrinks, never overlaps the next word when it must shrink, and keeps the paragraph's own line spacing for multi-line replacements.
+- Added a proper Replace dialog (Ctrl+R): multi-line text (Shift+Enter), alignment (auto / left / center / right), font size ("same as source" by default) and the wrap option, replacing the bare text prompt.
 - Improved (modern look): the toolbar now uses crisp line icons with captions (Open, Save, Undo, Redo, Delete, Replace, Find, page navigation, zoom) instead of text-only buttons; side panels have flat titles with a single close button; the page sits on the canvas with a margin and soft shadow; page thumbnails are framed cards; and an "Open PDF" welcome card appears when no document is open. Body text is slightly larger (10pt). No new image files are shipped — icons are built in.
 - Fixed: the Crop Page dialog (Tools → Crop Page…) crashed on open with an AttributeError; it works again and is now covered by a test.
 - Improved (screen layout review): the Edit menu now lists "Delete Selection" and "Replace Selection…" (previously only reachable via Del / Ctrl+R and the toolbar); "Batch Find/Replace…" moved next to Find (Edit menu, Ctrl+H); Help gained a "Shortcuts & Usage" entry (F1). The toolbar is reordered to Open/Save | Undo/Redo | Delete/Replace | Find | page navigation, with the page box showing "Page N / total".

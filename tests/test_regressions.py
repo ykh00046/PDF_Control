@@ -461,7 +461,10 @@ def test_replace_selection_does_not_log_sensitive_text(qtbot, tmp_path, caplog):
         window.viewer.current_page_index = 0
 
         caplog.set_level(logging.DEBUG, logger="PDFRedactionTool")
-        with patch("app.ui.QInputDialog.getText", return_value=("MASKED", True)):
+        with patch(
+            "app.handlers.edit_handlers.ReplaceTextDialog.prompt",
+            return_value={"text": "MASKED", "align": -1, "wrap": True, "fontsize": 0.0},
+        ):
             window.replace_selection()
 
         messages = "\n".join(record.message for record in caplog.records)

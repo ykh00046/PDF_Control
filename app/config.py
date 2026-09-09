@@ -56,6 +56,18 @@ TEXT_WRAP_ENABLED = True  # master switch for the wrap-first policy
 TEXT_WRAP_LINE_HEIGHT_FACTOR = 1.2  # line height = fontsize * this factor
 TEXT_WRAP_BOTTOM_MARGIN = 4.0  # keep at least this gap (pt) from page bottom
 
+# --- Natural replacement (natural-replace, 2026-09-09) ---
+# A replacement slightly longer than the source may extend into free space on
+# the same line (up to the next glyph / table rule) instead of wrapping or
+# shrinking, but never beyond this multiple of the source width.
+TEXT_EXTEND_MAX_RATIO = 1.5
+# ...but a tiny source (a 2-digit number) may always grow to at least this
+# many font sizes when the line has the room (e.g. "Ref: 77" -> "Ref: 78901").
+TEXT_EXTEND_MIN_FONT_FACTOR = 8.0
+# Minimum clearance (as a fraction of the font size) kept between the
+# replacement and the neighbouring glyph it extends towards.
+TEXT_WORD_GAP_FACTOR = 0.25
+
 # --- Watermark tiling ---
 # Cell size for a tiled watermark = max(watermark width, size) * this factor.
 # Larger = sparser grid; the factor leaves room so rotated tiles don't overlap.

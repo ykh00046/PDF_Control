@@ -367,5 +367,15 @@
   "dock.close.tooltip": "패널 숨기기",
   "empty.title": "열린 문서가 없습니다",
   "empty.hint": "PDF를 열거나 이 창에 끌어다 놓으면 편집을 시작할 수 있습니다.",
-  "empty.open": "PDF 열기..."
+  "empty.open": "PDF 열기...",
+  "dialog.replace.hint": "Enter로 확정, Shift+Enter로 줄바꿈합니다. 정렬 '자동'은 표의 숫자는 오른쪽 끝을, 문장은 왼쪽을 유지합니다.",
+  "dialog.replace.align": "정렬:",
+  "dialog.replace.align.auto": "자동 (원문에 맞춤)",
+  "dialog.replace.align.left": "왼쪽",
+  "dialog.replace.align.center": "가운데",
+  "dialog.replace.align.right": "오른쪽",
+  "dialog.replace.size": "글자 크기:",
+  "dialog.replace.size.auto": "원문과 동일",
+  "dialog.replace.ok": "교체",
+  "dialog.replace.cancel": "취소"
 }

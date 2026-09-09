@@ -367,5 +367,15 @@
   "dock.close.tooltip": "Hide panel",
   "empty.title": "No document open",
   "empty.hint": "Open a PDF or drop one here to start editing.",
-  "empty.open": "Open PDF..."
+  "empty.open": "Open PDF...",
+  "dialog.replace.hint": "Enter inserts, Shift+Enter starts a new line. Auto alignment keeps table figures on their right edge.",
+  "dialog.replace.align": "Alignment:",
+  "dialog.replace.align.auto": "Auto (match source)",
+  "dialog.replace.align.left": "Left",
+  "dialog.replace.align.center": "Center",
+  "dialog.replace.align.right": "Right",
+  "dialog.replace.size": "Font size:",
+  "dialog.replace.size.auto": "Same as source",
+  "dialog.replace.ok": "Replace",
+  "dialog.replace.cancel": "Cancel"
 }
