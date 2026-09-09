@@ -137,15 +137,22 @@ class WatermarkText(Operation):
         center_x: float,
         center_y: float,
     ) -> None:
-        """Draw one rotated text instance centered at (center_x, center_y)."""
+        """Draw one rotated text instance centered at (center_x, center_y).
+
+        ``center_*`` are in the displayed (``page.rect``) system. TextWriter
+        draws in the unrotated system, so the pivot is de-rotated and the
+        page rotation is folded into the morph angle (measured against an
+        unrotated reference page, feature-review 2026-09-09).
+        """
+        pivot = fitz.Point(center_x, center_y) * page.derotation_matrix
         writer = fitz.TextWriter(page.rect, opacity=self.opacity, color=self.color)
         writer.append(
-            (center_x - text_width / 2, center_y),
+            (pivot.x - text_width / 2, pivot.y),
             self.text,
             font=font,
             fontsize=self.fontsize,
         )
-        writer.write_text(page, morph=(fitz.Point(center_x, center_y), fitz.Matrix(self.angle)))
+        writer.write_text(page, morph=(pivot, fitz.Matrix(self.angle + page.rotation)))
 
     def to_dict(self) -> Dict[str, Any]:
         data = super().to_dict()
@@ -222,17 +229,24 @@ class WatermarkImage(Operation):
         # Embed once on the first placement, then reuse its xref so a tiled
         # image isn't stored N times.
         img_xref = 0
+        # insert_image works in the unrotated system: de-rotate the displayed
+        # rect and pre-rotate the image (anti-clockwise) by the page rotation
+        # so it appears upright to the viewer (feature-review 2026-09-09).
+        rotate = (self.rotate + page.rotation) % 360
         for center_x, center_y in centers:
-            rect = fitz.Rect(
-                center_x - target_w / 2,
-                center_y - target_h / 2,
-                center_x + target_w / 2,
-                center_y + target_h / 2,
+            rect = (
+                fitz.Rect(
+                    center_x - target_w / 2,
+                    center_y - target_h / 2,
+                    center_x + target_w / 2,
+                    center_y + target_h / 2,
+                )
+                * page.derotation_matrix
             )
             if img_xref:
-                page.insert_image(rect, xref=img_xref, rotate=self.rotate)
+                page.insert_image(rect, xref=img_xref, rotate=rotate)
             else:
-                img_xref = page.insert_image(rect, pixmap=pix, keep_proportion=True, rotate=self.rotate)
+                img_xref = page.insert_image(rect, pixmap=pix, keep_proportion=True, rotate=rotate)
 
     def to_dict(self) -> Dict[str, Any]:
         data = super().to_dict()

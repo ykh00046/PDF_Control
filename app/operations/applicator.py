@@ -416,11 +416,13 @@ class OperationApplicator:
             page: Page to apply redactions to
             operations: RedactDelete and RedactReplace operations
         """
-        # Add redaction annotations for all operations, filled with the
-        # sampled page background so the cleared area blends in.
-        fills = self._background_fills(page, operations)
-        for i, op in enumerate(operations):
-            op.apply(page, fill=fills.get(i))  # Adds redaction annotations
+        # No fill: apply_redactions removes the glyphs themselves, so leaving
+        # the area unpainted keeps underlines, cell shading and other vector
+        # art under the text intact (a fill rectangle cut them -- feature
+        # review 2026-09-09). Vector art *fully inside* the rect is dropped by
+        # the default graphics=1; images under the text are blanked.
+        for op in operations:
+            op.apply(page, fill=False)  # Adds redaction annotations
 
         # Apply all redactions at once (permanent removal)
         page.apply_redactions()

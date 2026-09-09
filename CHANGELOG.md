@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Fixed: Crop Page failed on every document ("CropBox not in MediaBox") in both preview and save; it works again. Crop margins are now applied to the page as displayed, so "top" cuts the visible top on rotated pages too.
+- Fixed: text and image watermarks on rotated pages were drawn at the wrong place and angle; they now land exactly where they would on an unrotated page (images stay upright to the viewer).
+- Improved: deleting or replacing text no longer paints a rectangle over the cleared area when saving, so underlines, table shading and other graphics under the text are preserved. (The on-screen preview still covers the area with the sampled background color.)
+- Improved: "Insert blank page" now uses the size of the neighbouring page instead of always A4.
 - Added a live preview to the Replace dialog (Ctrl+R): the page region around the selection is rendered with your candidate text, alignment, size and wrap settings as you type, so you can see the result before applying.
 - Added an Alignment option (auto / left / center / right) to Batch Find/Replace, applied to every replacement in the batch.
 - Fixed: Batch Find/Replace failed with an internal error as soon as it found a match (a non-existent PyMuPDF method was used to build the context column). Finding and replacing work again.

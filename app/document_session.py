@@ -380,12 +380,28 @@ class DocumentSession(QObject):
         self._remap_history_after_reorder(remap)
         get_logger().info(f"Moved page {from_index} → {to_index}")
 
-    def insert_blank_page(self, after_index: int = -1, width: float = 595, height: float = 842) -> None:
-        """Insert a blank page (default A4) after the specified index. -1 means at the end."""
+    def insert_blank_page(
+        self, after_index: int = -1, width: Optional[float] = None, height: Optional[float] = None
+    ) -> None:
+        """Insert a blank page after the specified index (-1 = at the end).
+
+        Without explicit ``width``/``height`` the new page takes the displayed
+        size of the page it follows (or the last page when appending), so a
+        landscape or non-A4 document does not get an A4 sheet dropped in
+        (feature-review 2026-09-09). An empty document falls back to A4.
+        """
         if after_index == -1:
             insert_at = self.doc.page_count
         else:
             insert_at = after_index + 1
+        if width is None or height is None:
+            ref_index = min(max(insert_at - 1, 0), self.doc.page_count - 1)
+            if self.doc.page_count > 0:
+                ref_rect = self.doc[ref_index].rect
+                width = width if width is not None else ref_rect.width
+                height = height if height is not None else ref_rect.height
+            else:
+                width, height = width or 595, height or 842
         self._capture_page_state()
         self.doc.new_page(insert_at, width=width, height=height)
         # Adjust operation indices

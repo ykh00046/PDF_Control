@@ -3,7 +3,7 @@
 Split out of the former monolithic ``app/model.py`` (model-restructure).
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import fitz
 
@@ -26,10 +26,11 @@ class RedactDelete(Operation):
     def __init__(self, page_index: int, rects: List[fitz.Rect]) -> None:
         super().__init__(page_index, rects)
 
-    def apply(self, page: fitz.Page, fill: Optional[RGB] = None) -> None:
+    def apply(self, page: fitz.Page, fill: Union[RGB, bool, None] = None) -> None:
         """Queue redaction annotations; ``fill`` is the sampled page background."""
         for rect in self.rects:
-            page.add_redact_annot(rect, fill=fill or WHITE)
+            # None -> white (legacy); False -> no fill (keep vector art under the text)
+            page.add_redact_annot(rect, fill=WHITE if fill is None else fill)
 
     def to_dict(self) -> Dict[str, Any]:
         return super().to_dict()
@@ -65,10 +66,11 @@ class RedactReplace(Operation):
         #   False -> skip wrapping, shrink the font instead
         self.wrap = wrap
 
-    def apply(self, page: fitz.Page, fill: Optional[RGB] = None) -> None:
+    def apply(self, page: fitz.Page, fill: Union[RGB, bool, None] = None) -> None:
         """Queue redaction annotations; ``fill`` is the sampled page background."""
         for rect in self.rects:
-            page.add_redact_annot(rect, fill=fill or WHITE)
+            # None -> white (legacy); False -> no fill (keep vector art under the text)
+            page.add_redact_annot(rect, fill=WHITE if fill is None else fill)
 
     def to_dict(self) -> Dict[str, Any]:
         data = super().to_dict()
