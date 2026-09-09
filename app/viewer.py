@@ -88,7 +88,11 @@ class PDFViewer(QGraphicsView):
     def _compute_cache_key(self, page_index, zoom, ops_data):
         # Serialize ops data to string for hash
         ops_str = json.dumps(ops_data, sort_keys=True)
-        key_str = f"{self.session.file_path}_{page_index}_{zoom:.2f}_{ops_str}"
+        # revision: an in-place save keeps the same path but new content --
+        # without it the cache served the pre-save render (looked like the
+        # edits had been reverted, 2026-09-09).
+        revision = getattr(self.session, "revision", 0)
+        key_str = f"{self.session.file_path}_r{revision}_{page_index}_{zoom:.2f}_{ops_str}"
         return hashlib.md5(key_str.encode("utf-8")).hexdigest()
 
     def _current_ops_data(self, page_index: Optional[int] = None) -> List[Dict]:

@@ -7,6 +7,7 @@ All state lives on ``MainWindow``; this mixin holds no instance state.
 from __future__ import annotations
 
 import os
+import traceback
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt
@@ -47,10 +48,12 @@ class FileHandlerMixin:
             QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard | QMessageBox.StandardButton.Cancel,
         )
         if reply == QMessageBox.StandardButton.Save:
+            self.logger.info("Unsaved-changes prompt: user chose Save")
             return self.save_file_as()
         if reply == QMessageBox.StandardButton.Cancel:
             self.logger.info("User cancelled (unsaved changes prompt)")
             return False
+        self.logger.info("Unsaved-changes prompt: user chose Discard")
         return True
 
     def _remember_file(self: "MainWindow", file_path: str) -> None:  # type: ignore[misc]
@@ -118,6 +121,7 @@ class FileHandlerMixin:
         """Close the current document (Ctrl+W), prompting for unsaved changes."""
         if not self.controller.session:
             return False
+        self.logger.info("Close document requested (File > Close / Ctrl+W)")
         if not self._confirm_discard_changes():
             return False
         self.controller.close_document()
@@ -273,7 +277,15 @@ class FileHandlerMixin:
         return False
 
     def closeEvent(self: "MainWindow", event) -> None:  # type: ignore[misc]
+        # Diagnostic (2026-09-09): a user reported the app closing right after a
+        # save. spontaneous=True means the OS/user (X button, Alt+F4) asked for
+        # the close; False means code called close() (e.g. the Exit action).
+        origin = "system/user" if event.spontaneous() else "code (close() call)"
+        self.logger.info(f"Main window close requested by {origin}")
+        if not event.spontaneous():
+            self.logger.debug("close() call stack:\n" + "".join(traceback.format_stack(limit=8)))
         if not self._confirm_discard_changes():
+            self.logger.info("Main window close cancelled by user")
             event.ignore()
             return
 

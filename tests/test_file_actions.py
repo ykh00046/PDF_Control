@@ -165,3 +165,18 @@ def test_history_panel_labels_watermarks(window, tmp_path):
     items = [window.history_list_widget.item(i).text() for i in range(window.history_list_widget.count())]
     assert not any("WatermarkText" in t or "WatermarkImage" in t for t in items)
     assert any("logo.png" in t for t in items)
+
+
+def test_in_place_save_invalidates_render_cache(window, two_page_pdf):
+    """Same path after Ctrl+S -> the pre-save render must not be served."""
+    from PySide6.QtGui import QImage
+
+    viewer = window.viewer
+    key_before = viewer._current_cache_key()
+    viewer.image_cache[key_before] = QImage(10, 10, QImage.Format_RGB32)  # pretend original was rendered
+    window.controller.session.add_operation(RedactDelete(0, [fitz.Rect(40, 60, 200, 100)]))
+    assert window.save_file() is True
+    key_after = viewer._current_cache_key()
+    assert key_after != key_before
+    assert key_after not in viewer.image_cache
+    assert window.controller.session.revision >= 1

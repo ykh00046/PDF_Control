@@ -52,6 +52,10 @@ class DocumentSession(QObject):
             # "Remove Protection" action and the encrypted-state indicator.
             self._password: Optional[str] = password
             self.is_encrypted: bool = password is not None
+            # Bumped every time the underlying document handle is swapped
+            # (save, page-state restore). Render caches key on it so an
+            # in-place save (same path!) can never serve the pre-save image.
+            self.revision: int = 0
             self.pages: List[PageModel] = [PageModel(i) for i in range(self.doc.page_count)]
             self.history: List[Operation] = []
             self.redo_stack: List[Operation] = []
@@ -84,6 +88,7 @@ class DocumentSession(QObject):
         self.doc = doc
         self.file_path = file_path
         self.pages = [PageModel(i) for i in range(self.doc.page_count)]
+        self.revision = getattr(self, "revision", 0) + 1
 
         if old_doc is not None and old_doc is not doc and not old_doc.is_closed:
             old_doc.close()
