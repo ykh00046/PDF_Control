@@ -26,6 +26,7 @@ from app.model import (
     RedactReplace,
     RemoveSectionAsImage,
 )
+from app.operations.redact import ALIGN_AUTO
 
 if TYPE_CHECKING:
     from app.ui import MainWindow
@@ -59,6 +60,7 @@ class DialogHandlerMixin:
             new_text = r_data["new_text"]
             fontsize = r_data.get("fontsize") or 0
             wrap = r_data.get("wrap")  # bool from dialog; None falls back to global
+            align = r_data.get("align", ALIGN_AUTO)
 
             operation = RedactReplace(
                 page_index,
@@ -67,6 +69,7 @@ class DialogHandlerMixin:
                 fontfile=self.current_replacement_font_path,
                 fontsize=fontsize,
                 wrap=wrap,
+                align=align,
             )
             # Controller emits operation_applied for each add — batching would
             # avoid repeat signal fan-out, but today the simple loop is

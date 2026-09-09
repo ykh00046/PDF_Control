@@ -1,4 +1,4 @@
-"""Replace-selection dialog (natural-replace).
+"""Replace-selection dialog (natural-replace + live preview).
 
 Replaces the bare ``QInputDialog.getText`` prompt with a small form:
 
@@ -6,17 +6,19 @@ Replaces the bare ``QInputDialog.getText`` prompt with a small form:
 * alignment: auto / left / center / right (auto keeps table figures on
   their right edge and prose on the left),
 * word-wrap policy for long text (wrap vs. shrink),
-* optional fixed font size (0 = keep the source size).
+* optional fixed font size (0 = keep the source size),
+* a live preview of the page region with the candidate applied
+  (debounced; rendered by :mod:`app.replace_preview`).
 
 The dialog returns plain values; the handler builds the ``RedactReplace``.
 """
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QKeyEvent
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QImage, QKeyEvent, QPixmap
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -32,10 +34,18 @@ from PySide6.QtWidgets import (
 )
 
 from app.i18n import tr
+from app.logger import get_logger
 from app.operations.redact import ALIGN_AUTO, ALIGN_CENTER, ALIGN_LEFT, ALIGN_RIGHT
+from app.replace_preview import PreviewContext, render_replacement_preview
 from app.theme import LIGHT_THEME, label_style
 
 _ALIGN_ORDER = (ALIGN_AUTO, ALIGN_LEFT, ALIGN_CENTER, ALIGN_RIGHT)
+PREVIEW_DEBOUNCE_MS = 250
+PREVIEW_MAX_WIDTH = 520
+
+# Resolves the font file for a candidate replacement text (glyph coverage
+# depends on the text, e.g. Hangul needs a Korean font).
+FontResolver = Callable[[str], Optional[str]]
 
 
 class _ReplacementEdit(QPlainTextEdit):
@@ -59,10 +69,18 @@ class _ReplacementEdit(QPlainTextEdit):
 class ReplaceTextDialog(QDialog):
     """Ask for replacement text + layout options for the current selection."""
 
-    def __init__(self, existing_text: str, parent: Optional[QWidget] = None) -> None:
+    def __init__(
+        self,
+        existing_text: str,
+        parent: Optional[QWidget] = None,
+        preview: Optional[PreviewContext] = None,
+        font_resolver: Optional[FontResolver] = None,
+    ) -> None:
         super().__init__(parent)
+        self._preview_ctx = preview
+        self._font_resolver = font_resolver
         self.setWindowTitle(tr("dialog.replace.title"))
-        self.setMinimumWidth(420)
+        self.setMinimumWidth(460)
 
         layout = QVBoxLayout(self)
         layout.setSpacing(LIGHT_THEME.space_sm)
@@ -112,6 +130,32 @@ class ReplaceTextDialog(QDialog):
         self.wrap_checkbox.setChecked(True)
         layout.addWidget(self.wrap_checkbox)
 
+        # --- live preview -------------------------------------------------
+        self.preview_title = QLabel(tr("dialog.replace.preview"), self)
+        self.preview_title.setStyleSheet(label_style(LIGHT_THEME, "muted"))
+        self.preview_label = QLabel(self)
+        self.preview_label.setObjectName("replacePreview")
+        self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.preview_label.setMinimumHeight(64)
+        self.preview_label.setStyleSheet(
+            f"background: {LIGHT_THEME.bg_surface}; border: 1px solid {LIGHT_THEME.border}; "
+            f"border-radius: {LIGHT_THEME.radius}px; padding: {LIGHT_THEME.space_xs}px;"
+        )
+        layout.addWidget(self.preview_title)
+        layout.addWidget(self.preview_label)
+        has_preview = preview is not None
+        self.preview_title.setVisible(has_preview)
+        self.preview_label.setVisible(has_preview)
+
+        self._preview_timer = QTimer(self)
+        self._preview_timer.setSingleShot(True)
+        self._preview_timer.setInterval(PREVIEW_DEBOUNCE_MS)
+        self._preview_timer.timeout.connect(self.refresh_preview)
+        self.text_edit.textChanged.connect(self._schedule_preview)
+        self.align_combo.currentIndexChanged.connect(self._schedule_preview)
+        self.size_spin.valueChanged.connect(self._schedule_preview)
+        self.wrap_checkbox.toggled.connect(self._schedule_preview)
+
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel, self)
         buttons.button(QDialogButtonBox.StandardButton.Ok).setText(tr("dialog.replace.ok"))
         buttons.button(QDialogButtonBox.StandardButton.Cancel).setText(tr("dialog.replace.cancel"))
@@ -120,6 +164,8 @@ class ReplaceTextDialog(QDialog):
         layout.addWidget(buttons)
 
         self.text_edit.setFocus()
+        if has_preview:
+            self.refresh_preview()
 
     # ---------------------------------------------------------------- values
     def replacement_text(self) -> str:
@@ -133,10 +179,47 @@ class ReplaceTextDialog(QDialog):
             "fontsize": float(self.size_spin.value()),
         }
 
+    # --------------------------------------------------------------- preview
+    def _schedule_preview(self, *_args: Any) -> None:
+        if self._preview_ctx is not None:
+            self._preview_timer.start()
+
+    def refresh_preview(self) -> bool:
+        """Render the preview now (also used by tests). Returns success."""
+        self._preview_timer.stop()
+        ctx = self._preview_ctx
+        if ctx is None:
+            return False
+        settings = self.settings()
+        if self._font_resolver is not None:
+            try:
+                ctx.fontfile = self._font_resolver(settings["text"])
+            except Exception as exc:  # never let a font lookup kill the preview
+                get_logger().debug(f"Preview font resolve failed: {exc}")
+        try:
+            pix, _text = render_replacement_preview(ctx, settings)
+        except Exception as exc:
+            get_logger().warning(f"Replace preview failed: {exc}")
+            self.preview_label.setText(tr("dialog.replace.preview.failed"))
+            return False
+        fmt = QImage.Format.Format_RGBA8888 if pix.alpha else QImage.Format.Format_RGB888
+        image = QImage(pix.samples, pix.width, pix.height, pix.stride, fmt).copy()
+        pixmap = QPixmap.fromImage(image)
+        if pixmap.width() > PREVIEW_MAX_WIDTH:
+            pixmap = pixmap.scaledToWidth(PREVIEW_MAX_WIDTH, Qt.TransformationMode.SmoothTransformation)
+        self.preview_label.setPixmap(pixmap)
+        return True
+
     @classmethod
-    def prompt(cls, existing_text: str, parent: Optional[QWidget] = None) -> Optional[Dict[str, Any]]:
+    def prompt(
+        cls,
+        existing_text: str,
+        parent: Optional[QWidget] = None,
+        preview: Optional[PreviewContext] = None,
+        font_resolver: Optional[FontResolver] = None,
+    ) -> Optional[Dict[str, Any]]:
         """Modal helper: returns the settings dict, or None when cancelled."""
-        dialog = cls(existing_text, parent)
+        dialog = cls(existing_text, parent, preview=preview, font_resolver=font_resolver)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return None
         return dialog.settings()

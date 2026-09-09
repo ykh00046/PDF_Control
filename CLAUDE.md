@@ -211,6 +211,10 @@ _None currently tracked. Open a new item here if one surfaces._
 
 - ~~텍스트 내보내기 "페이지 범위" 끊긴 연결~~: `TextExportDialog`에 range 라디오/입력란은 있었으나 `get_settings()`가 range를 버려(scope를 all/current로만, range_edit 미독) 범위 선택 시 **현재 페이지만 조용히 내보내짐**. 또 `tr()`로 참조하는 `text_export.scope.range`/`range.placeholder` i18n 키가 en/ko 양쪽에 **없었음**(패리티 동수라 미검출). 수정: get_settings 3-scope+range 반환, `apply_text_export`가 기존 `parse_page_ranges`(재사용) 파싱→평탄화→`resolve_indices` 정렬·중복제거. ValueError 안전 중단. 누락 i18n 3키 복구. 백엔드 신규 0(연결만). 287 tests pass. 후보: validate_i18n에 tr() 참조 키 검증 추가.
 
+### Added (2026-09-09, replace-preview PDCA)
+
+- **교체 대화상자 실시간 미리보기 + 일괄 교체 정렬 선택**: `app/replace_preview.py`(pure) — `PreviewContext`(doc/page/rect/폰트 메타) + `render_replacement_preview(ctx, settings)`가 단일 페이지 임시 사본에 `RedactReplace`를 PREVIEW 모드로 적용해 선택 영역 주변(가로 ±70pt, 세로 ±26pt) 클립을 2x 픽스맵으로 반환. `ReplaceTextDialog`가 텍스트/정렬/크기/줄바꿈 변경 시 250ms 디바운스로 갱신(`refresh_preview()` 테스트용), 폰트는 후보 텍스트의 글리프 커버리지에 따라 `font_resolver` 콜백으로 재해석(한글 입력 시 한글 폰트). 핸들러는 메타 추출을 대화상자 **이전**으로 옮겨 컨텍스트 전달. `BatchReplaceDialog`에 정렬 콤보(자동/좌/중/우) → `replacements_confirmed` dict `align` → `process_batch_replacements`. **발견 버그**: `batch_replace_dialog`가 존재하지 않는 `fitz.Rect.expanded(20)`를 호출해 **일괄 찾기가 매치 즉시 AttributeError**(문자열·정규식 경로 모두) — 대화상자 테스트가 없어 미검출 → `_context_rect` 헬퍼. 주의: PREVIEW 모드는 원문을 지우지 않고 `draw_rect`로 덮으므로 `get_text`에 원문이 남는다(픽셀로 검증). `tests/test_replace_preview.py` 6종. 461 tests pass.
+
 ### Resolved (2026-09-09, save-cache-revision hotfix)
 
 - ~~Ctrl+S 저장 후 편집이 "취소되어 원본으로 돌아가는" 것처럼 보임~~: 파일은 정상 저장됨. 뷰어 렌더 캐시 키가 `file_path+page+zoom+ops`뿐이라 **제자리 저장(같은 경로)** 후 history가 비면 처음 열었을 때의 원본 렌더와 키가 같아 **저장 전 이미지를 캐시에서 서빙**. Save As는 경로가 바뀌어 미노출. 수정: `DocumentSession.revision`(`_bind_document`마다 +1)을 캐시 키에 포함(`viewer._compute_cache_key`). 회귀 테스트 `test_in_place_save_invalidates_render_cache`. **교훈**: 문서 핸들이 교체되는 모든 경로(저장/페이지 상태 복원)는 렌더 캐시 무효화 대상 — 경로만으로는 부족. 같이 넣은 진단: `closeEvent`가 닫기 요청 출처(spontaneous 여부)와 "저장할까요?" 선택을 INFO 로그로 남김. 455 tests pass.

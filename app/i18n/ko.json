@@ -377,5 +377,9 @@
   "dialog.replace.size": "글자 크기:",
   "dialog.replace.size.auto": "원문과 동일",
   "dialog.replace.ok": "교체",
-  "dialog.replace.cancel": "취소"
+  "dialog.replace.cancel": "취소",
+  "batch.align": "정렬:",
+  "batch.align.tooltip": "이 일괄 교체의 정렬 (자동: 숫자는 오른쪽 끝 유지, 글자는 왼쪽)",
+  "dialog.replace.preview": "미리보기",
+  "dialog.replace.preview.failed": "미리보기를 표시할 수 없습니다"
 }

@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Added a live preview to the Replace dialog (Ctrl+R): the page region around the selection is rendered with your candidate text, alignment, size and wrap settings as you type, so you can see the result before applying.
+- Added an Alignment option (auto / left / center / right) to Batch Find/Replace, applied to every replacement in the batch.
+- Fixed: Batch Find/Replace failed with an internal error as soon as it found a match (a non-existent PyMuPDF method was used to build the context column). Finding and replacing work again.
 - Fixed: after Save (Ctrl+S, in place) the viewer showed the document as it was before saving, which looked as if the edits had been reverted. The file on disk was correct; the preview was served from a stale render cache keyed only by path. The cache now also keys on the document's save revision.
 - Improved (natural text replacement): replaced text now sits exactly on the original line (it previously floated about 1.4pt above it), keeps table figures right-aligned (and prose left-aligned) automatically, fills the cleared area with the page's real background color instead of white, grows into free space on the line before it wraps or shrinks, never overlaps the next word when it must shrink, and keeps the paragraph's own line spacing for multi-line replacements.
 - Added a proper Replace dialog (Ctrl+R): multi-line text (Shift+Enter), alignment (auto / left / center / right), font size ("same as source" by default) and the wrap option, replacing the bare text prompt.

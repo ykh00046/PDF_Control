@@ -1,10 +1,12 @@
 import re
 from typing import Any, Dict, List
 
+import fitz
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
+    QComboBox,
     QDialog,
     QHBoxLayout,
     QHeaderView,
@@ -20,8 +22,18 @@ from PySide6.QtWidgets import (
 
 from app.i18n import tr
 from app.logger import get_logger
+from app.operations.redact import ALIGN_AUTO, ALIGN_CENTER, ALIGN_LEFT, ALIGN_RIGHT
 from app.text_utils import parse_page_range, sanitize_unicode
 from app.theme import LIGHT_THEME, label_style
+
+CONTEXT_PAD_PT = 20.0
+
+
+def _context_rect(rect: fitz.Rect) -> fitz.Rect:
+    """Rect grown by CONTEXT_PAD_PT on every side (fitz.Rect has no expanded())."""
+    return fitz.Rect(
+        rect.x0 - CONTEXT_PAD_PT, rect.y0 - CONTEXT_PAD_PT, rect.x1 + CONTEXT_PAD_PT, rect.y1 + CONTEXT_PAD_PT
+    )
 
 
 class BatchReplaceDialog(QDialog):
@@ -93,6 +105,20 @@ class BatchReplaceDialog(QDialog):
         self.use_wrap_checkbox.setToolTip(tr("batch.use_wrap.tooltip"))
         self.use_wrap_checkbox.setChecked(True)
         font_layout.addWidget(self.use_wrap_checkbox)
+
+        # Alignment for every replacement in this batch (auto = numbers keep
+        # their right edge, prose stays left -- same rule as Ctrl+R).
+        font_layout.addWidget(QLabel(tr("batch.align")))
+        self.align_combo = QComboBox()
+        for value, key in (
+            (ALIGN_AUTO, "dialog.replace.align.auto"),
+            (ALIGN_LEFT, "dialog.replace.align.left"),
+            (ALIGN_CENTER, "dialog.replace.align.center"),
+            (ALIGN_RIGHT, "dialog.replace.align.right"),
+        ):
+            self.align_combo.addItem(tr(key), value)
+        self.align_combo.setToolTip(tr("batch.align.tooltip"))
+        font_layout.addWidget(self.align_combo)
 
         font_layout.addStretch()
         main_layout.addLayout(font_layout)
@@ -194,7 +220,7 @@ class BatchReplaceDialog(QDialog):
             found_rects = page.search_for(find_text)
 
             for rect in found_rects:
-                context_text = page.get_textbox(rect.expanded(20))
+                context_text = page.get_textbox(_context_rect(rect))
 
                 self.matches.append(
                     {
@@ -234,7 +260,7 @@ class BatchReplaceDialog(QDialog):
 
                 if found_rects:
                     rect = found_rects[0]  # Use first match (may not be perfect)
-                    context_text = page.get_textbox(rect.expanded(20))
+                    context_text = page.get_textbox(_context_rect(rect))
 
                     self.matches.append(
                         {
@@ -272,8 +298,9 @@ class BatchReplaceDialog(QDialog):
         if self.use_fixed_font_checkbox.isChecked():
             fixed_fontsize = self.font_size_spinbox.value()
 
-        # Word-wrap policy chosen by the user for this batch.
+        # Word-wrap policy and alignment chosen by the user for this batch.
         wrap_enabled = self.use_wrap_checkbox.isChecked()
+        align = self.align_combo.currentData()
 
         for i, match in enumerate(self.matches):
             checkbox_item = self.matches_table.item(i, 3)
@@ -285,6 +312,7 @@ class BatchReplaceDialog(QDialog):
                         "new_text": replace_text,
                         "fontsize": fixed_fontsize,  # None for auto, or fixed value
                         "wrap": wrap_enabled,  # True=wrap, False=shrink
+                        "align": align,  # ALIGN_AUTO / LEFT / CENTER / RIGHT
                     }
                 )
 

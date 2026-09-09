@@ -377,5 +377,9 @@
   "dialog.replace.size": "Font size:",
   "dialog.replace.size.auto": "Same as source",
   "dialog.replace.ok": "Replace",
-  "dialog.replace.cancel": "Cancel"
+  "dialog.replace.cancel": "Cancel",
+  "batch.align": "Alignment:",
+  "batch.align.tooltip": "Alignment for every replacement in this batch (Auto: numbers keep their right edge, text stays left)",
+  "dialog.replace.preview": "Preview",
+  "dialog.replace.preview.failed": "Preview unavailable"
 }

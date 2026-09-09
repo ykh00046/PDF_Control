@@ -17,6 +17,7 @@ from app.i18n import tr
 from app.model import RedactDelete, RedactReplace
 from app.operations.redact import ALIGN_AUTO
 from app.replace_dialog import ReplaceTextDialog
+from app.replace_preview import PreviewContext
 from app.text_utils import contains_hangul
 
 if TYPE_CHECKING:
@@ -91,14 +92,17 @@ class EditHandlerMixin:
             self.logger.warning(f"Smart snap failed: {e}")
             return selection_rect, page.get_textbox(selection_rect).strip()
 
-    def _prompt_replacement_text(self: "MainWindow", existing_text):  # type: ignore[misc]
+    def _prompt_replacement_text(  # type: ignore[misc]
+        self: "MainWindow", existing_text, preview=None, font_resolver=None
+    ):
         """Open the replace dialog; returns its settings dict or None on cancel/error.
 
         The dict carries ``text`` plus layout options (``align``, ``wrap``,
-        ``fontsize``) that :class:`RedactReplace` understands.
+        ``fontsize``) that :class:`RedactReplace` understands. ``preview``
+        (a :class:`PreviewContext`) enables the live preview panel.
         """
         try:
-            settings = ReplaceTextDialog.prompt(existing_text, self)
+            settings = ReplaceTextDialog.prompt(existing_text, self, preview=preview, font_resolver=font_resolver)
         except Exception as e:
             self.logger.error(f"Failed to open replace dialog: {e}")
             self.statusBar().showMessage(tr("dialog.error"))
@@ -156,15 +160,29 @@ class EditHandlerMixin:
         page = self.controller.session.doc[page_index]
         target_rect, existing_text = self._snap_selection_to_text(page, self.last_selected_rect)
 
-        settings = self._prompt_replacement_text(existing_text)
+        from app.model import _extract_text_metadata
+
+        meta = _extract_text_metadata(page, target_rect)
+        preview = PreviewContext(
+            doc=self.controller.session.doc,
+            page_index=page_index,
+            rect=fitz.Rect(target_rect),
+            fontname=meta["fontname"],
+            fontfile=self._resolve_replacement_font(existing_text, meta["fontname"], meta["font_flags"]),
+            fontsize=meta["fontsize"],
+            color=meta["color"],
+            font_flags=meta["font_flags"],
+        )
+
+        def resolve_font(candidate: str):
+            return self._resolve_replacement_font(candidate, meta["fontname"], meta["font_flags"])
+
+        settings = self._prompt_replacement_text(existing_text, preview, resolve_font)
         if settings is None:
             return
         replacement_text = settings["text"]
 
         try:
-            from app.model import _extract_text_metadata
-
-            meta = _extract_text_metadata(page, target_rect)
             font_path = self._resolve_replacement_font(replacement_text, meta["fontname"], meta["font_flags"])
             # fontsize 0 = "same as source": the applicator re-extracts it at
             # apply time (preview and save share that path).
