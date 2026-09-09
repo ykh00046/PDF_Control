@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 from app.i18n import tr
 from app.logger import get_logger
 from app.text_utils import parse_page_range, sanitize_unicode
+from app.theme import LIGHT_THEME, label_style
 
 
 class BatchReplaceDialog(QDialog):
@@ -98,7 +99,7 @@ class BatchReplaceDialog(QDialog):
 
         # --- Status Label ---
         self.status_label = QLabel(tr("batch.status.initial"))
-        self.status_label.setStyleSheet("color: gray; font-style: italic;")
+        self.status_label.setStyleSheet(label_style(LIGHT_THEME, "muted"))
         main_layout.addWidget(self.status_label)
 
         # --- Matches Table ---
@@ -163,7 +164,7 @@ class BatchReplaceDialog(QDialog):
         self.matches_table.setRowCount(0)
         self.replace_all_button.setEnabled(False)
         self.status_label.setText(tr("batch.status.searching"))
-        self.status_label.setStyleSheet("color: blue; font-style: italic;")
+        self.status_label.setStyleSheet(label_style(LIGHT_THEME, "info"))
 
         if use_regex:
             self._find_with_regex(find_text, target_pages)
@@ -176,11 +177,11 @@ class BatchReplaceDialog(QDialog):
             self.replace_all_button.setEnabled(True)
             mode_str = tr("batch.mode.regex") if use_regex else tr("batch.mode.string")
             self.status_label.setText(tr("batch.status.found", len(self.matches), mode_str, find_text))
-            self.status_label.setStyleSheet("color: green; font-weight: bold;")
+            self.status_label.setStyleSheet(label_style(LIGHT_THEME, "success", emphasis=True))
             self.logger.info(f"Batch find: Found {len(self.matches)} occurrences (regex={use_regex})")
         else:
             self.status_label.setText(tr("batch.status.not_found"))
-            self.status_label.setStyleSheet("color: orange; font-style: italic;")
+            self.status_label.setStyleSheet(label_style(LIGHT_THEME, "warning"))
             self.logger.info(f"Batch find: No occurrences found (regex={use_regex})")
 
     def _find_exact_string(self, find_text: str, target_pages=None):
@@ -212,7 +213,7 @@ class BatchReplaceDialog(QDialog):
         except re.error as e:
             QMessageBox.critical(self, tr("batch.error.regex.title"), tr("batch.error.regex.message", e))
             self.status_label.setText(tr("batch.error.regex.message", e))
-            self.status_label.setStyleSheet("color: red; font-weight: bold;")
+            self.status_label.setStyleSheet(label_style(LIGHT_THEME, "error", emphasis=True))
             return
 
         for page_idx in range(self.document_session.doc.page_count):

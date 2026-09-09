@@ -21,6 +21,7 @@ from app.operations.base import Operation
 from app.operations.remove_section import RemoveSectionAsImage
 from app.pdf_engine import apply_page_operations, open_document, save_document_copy
 from app.text_export import build_text, export_text_to_file, resolve_indices
+from app.text_search import SearchHit, find_text
 
 PAGE_HISTORY_LIMIT = 20
 
@@ -84,7 +85,7 @@ class DocumentSession(QObject):
         self.file_path = file_path
         self.pages = [PageModel(i) for i in range(self.doc.page_count)]
 
-        if old_doc is not None and old_doc is not doc:
+        if old_doc is not None and old_doc is not doc and not old_doc.is_closed:
             old_doc.close()
 
     def add_operation(self, operation: Operation) -> None:
@@ -157,10 +158,25 @@ class DocumentSession(QObject):
 
         apply_page_operations(page, operations_for_page, mode=ApplyMode.SAVE, logger=get_logger())
 
+    def is_same_file(self, path: str) -> bool:
+        """True when ``path`` names the currently open document file."""
+        if not self.file_path or not path:
+            return False
+        return os.path.normcase(os.path.abspath(path)) == os.path.normcase(os.path.abspath(self.file_path))
+
     def save_document(self, output_path: str, encryption: Optional[EncryptionSettings] = None) -> None:
+        """Write the edited document to ``output_path`` and re-bind to it.
+
+        Saving onto the currently open file (plain "Save") goes through a
+        sibling temp file + atomic ``os.replace`` so a failure mid-write never
+        truncates the original, and MuPDF's lazily-read handle on the old
+        file is closed before the swap.
+        """
         logger = get_logger()
+        in_place = self.is_same_file(output_path)
+        write_path = f"{output_path}.saving.tmp" if in_place else output_path
         try:
-            logger.info(f"Saving document: {len(self.history)} operations to apply")
+            logger.info(f"Saving document: {len(self.history)} operations to apply (in_place={in_place})")
             # Snapshot the CURRENT document (page-management changes baked in,
             # plaintext) as the save source. Re-opening self.file_path instead
             # would silently drop every delete/rotate/move/reorder, since those
@@ -169,7 +185,7 @@ class DocumentSession(QObject):
             # throwaway buffer copy, leaving self.doc intact for preview/edit.
             save_document_copy(
                 self.file_path,
-                output_path,
+                write_path,
                 self.history,
                 logger=logger,
                 encryption=encryption,
@@ -184,6 +200,17 @@ class DocumentSession(QObject):
                 new_password: Optional[str] = encryption.unlock_password()
             else:
                 new_password = None
+
+            if in_place:
+                # Release the old handle first: on Windows a file that MuPDF
+                # still has open cannot be replaced. If the swap fails, re-open
+                # the untouched original so the session stays usable.
+                self.doc.close()
+                try:
+                    os.replace(write_path, output_path)
+                except OSError:
+                    self.doc = open_document(output_path, password=self._password)
+                    raise
             reloaded_doc = open_document(output_path, password=new_password)
             self._bind_document(reloaded_doc, output_path)
             self._password = new_password
@@ -196,6 +223,11 @@ class DocumentSession(QObject):
             self.history_changed.emit()
             log_file_operation("save", output_path, success=True)
         except Exception as e:
+            if in_place and os.path.exists(write_path):
+                try:
+                    os.remove(write_path)
+                except OSError:
+                    pass
             log_file_operation("save", output_path, success=False, error_msg=str(e))
             raise
 
@@ -574,6 +606,10 @@ class DocumentSession(QObject):
 
         get_logger().info(f"Split document into {len(written)} file(s) in {output_dir}")
         return written
+
+    def find_text(self, query: str, case_sensitive: bool = False) -> List[SearchHit]:
+        """Locate every occurrence of ``query`` (read-only, see :mod:`app.text_search`)."""
+        return find_text(self.doc, query, case_sensitive=case_sensitive)
 
     def extract_text(self, page_indices: Optional[List[int]] = None, fmt: str = "txt") -> str:
         """Return the selected pages' text as a string (whole document when None).

@@ -3,17 +3,31 @@ import json
 import subprocess
 import sys
 import uuid
+from collections import OrderedDict
 from pathlib import Path
 from typing import Dict, List, Optional
 
 import fitz  # PyMuPDF
 from PySide6.QtCore import QPointF, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import QBrush, QColor, QImage, QPainter, QPen, QPixmap
-from PySide6.QtWidgets import QGraphicsPixmapItem, QGraphicsRectItem, QGraphicsScene, QGraphicsView
+from PySide6.QtWidgets import (
+    QGraphicsDropShadowEffect,
+    QGraphicsPixmapItem,
+    QGraphicsRectItem,
+    QGraphicsScene,
+    QGraphicsView,
+)
 
 from app.logger import get_logger, log_render_performance
 from app.model import DocumentSession
 from app.path_helper import get_base_path, get_temp_dir, is_frozen
+from app.theme import LIGHT_THEME
+
+# Canvas presentation: margin around the rendered page + its drop shadow (px).
+PAGE_MARGIN = 32
+PAGE_SHADOW_BLUR = 28
+PAGE_SHADOW_OFFSET = 4
+PAGE_SHADOW_ALPHA = 60
 
 
 class PDFViewer(QGraphicsView):
@@ -38,8 +52,14 @@ class PDFViewer(QGraphicsView):
         self.end_point: Optional[QPointF] = None
         self.selection_rect_item: Optional[QGraphicsRectItem] = None
 
-        # Process-based rendering & cache
-        self.image_cache = {}  # Key: hash string, Value: QImage
+        # Search highlight overlay (PDF-space rects for the current page).
+        self._highlight_rects: List[fitz.Rect] = []
+        self._highlight_current: Optional[fitz.Rect] = None
+        self._highlight_items: List[QGraphicsRectItem] = []
+
+        # Process-based rendering & cache (true LRU: hits move to the end,
+        # eviction pops the least recently used entry).
+        self.image_cache: "OrderedDict[str, QImage]" = OrderedDict()
         self.cache_size = 20  # Max number of cached images
         self._active_render_process: Optional[subprocess.Popen] = None
         self._active_request_key: Optional[str] = None
@@ -297,6 +317,7 @@ class PDFViewer(QGraphicsView):
         if cache_key in self.image_cache:
             self._cancel_active_render()
             get_logger().debug(f"Cache hit for page {self.current_page_index}")
+            self.image_cache.move_to_end(cache_key)
             self._update_scene(self.image_cache[cache_key])
             return
 
@@ -330,11 +351,9 @@ class PDFViewer(QGraphicsView):
             self.render_finished.emit()
             return
 
-        # Cache result
-        # LRU eviction
-        if len(self.image_cache) >= self.cache_size:
-            # Remove arbitrary item (first key) - simple FIFO/random actually
-            self.image_cache.pop(next(iter(self.image_cache)))
+        # Cache result (LRU eviction: the first key is the least recently used)
+        while len(self.image_cache) >= self.cache_size:
+            self.image_cache.popitem(last=False)
 
         self.image_cache[request_key] = img
 
@@ -363,8 +382,21 @@ class PDFViewer(QGraphicsView):
         self.scene.clear()
         self.selection_rect_item = None
         self.current_pixmap_item = QGraphicsPixmapItem(QPixmap.fromImage(img))
+        # Soft drop shadow so the page reads as a sheet lying on the canvas
+        # instead of a flat rectangle glued to the background.
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(PAGE_SHADOW_BLUR)
+        shadow.setOffset(0, PAGE_SHADOW_OFFSET)
+        shadow.setColor(QColor(0, 0, 0, PAGE_SHADOW_ALPHA))
+        self.current_pixmap_item.setGraphicsEffect(shadow)
         self.scene.addItem(self.current_pixmap_item)
-        self.scene.setSceneRect(self.current_pixmap_item.boundingRect())
+        # Breathing room around the page (the item itself stays at the
+        # origin so PDF<->scene coordinate maths is unchanged).
+        self.scene.setSceneRect(
+            self.current_pixmap_item.boundingRect().adjusted(
+                -PAGE_MARGIN, -PAGE_MARGIN, PAGE_MARGIN, PAGE_MARGIN + PAGE_SHADOW_OFFSET
+            )
+        )
 
         # Only fitInView if scene was empty or size changed significantly?
         # Or just rely on user scroll?
@@ -376,8 +408,55 @@ class PDFViewer(QGraphicsView):
         # Let's keep it simple: update scene. User keeps scroll/zoom.
         # If we want "fit to width", we change zoom level, which triggers render.
 
+        self._draw_highlights()
         self.viewport().update()
         self.update()
+
+    # --- Search highlights ---
+    def set_highlights(self, rects: List[fitz.Rect], current: Optional[fitz.Rect] = None):
+        """Overlay search hit rects (PDF space) on the current page.
+
+        ``current`` is drawn in a stronger color. The overlay is redrawn after
+        every re-render, so callers only need to set it once per page.
+        """
+        self._highlight_rects = list(rects)
+        self._highlight_current = current
+        self._draw_highlights()
+        if self._highlight_current is not None and self.current_pixmap_item is not None:
+            self.ensureVisible(self._pdf_rect_to_scene(self._highlight_current), 50, 50)
+
+    def clear_highlights(self):
+        self._highlight_rects = []
+        self._highlight_current = None
+        self._draw_highlights()
+
+    def _pdf_rect_to_scene(self, rect: fitz.Rect) -> QRectF:
+        scale = self.zoom_level * 150 / 72
+        return QRectF(rect.x0 * scale, rect.y0 * scale, rect.width * scale, rect.height * scale)
+
+    def _draw_highlights(self):
+        for item in self._highlight_items:
+            try:
+                if item.scene() == self.scene:
+                    self.scene.removeItem(item)
+            except RuntimeError:
+                pass  # scene.clear() already deleted the C++ item
+        self._highlight_items = []
+        if self.current_pixmap_item is None:
+            return
+        for rect in self._highlight_rects:
+            is_current = self._highlight_current is not None and rect == self._highlight_current
+            item = QGraphicsRectItem(self._pdf_rect_to_scene(rect))
+            t = LIGHT_THEME
+            if is_current:
+                item.setPen(QPen(QColor(*t.highlight_current_rgb), 2))
+                item.setBrush(QBrush(QColor(*t.highlight_current_rgb, t.highlight_current_fill_alpha)))
+            else:
+                item.setPen(QPen(QColor(*t.highlight_rgb), 1))
+                item.setBrush(QBrush(QColor(*t.highlight_rgb, t.highlight_fill_alpha)))
+            item.setZValue(1)
+            self.scene.addItem(item)
+            self._highlight_items.append(item)
 
     # --- API Compatibility ---
     def render_current_page(self):
@@ -489,8 +568,10 @@ class PDFViewer(QGraphicsView):
             rect = QRectF(self.start_point, self.end_point).normalized()
             if not self.selection_rect_item:
                 self.selection_rect_item = QGraphicsRectItem(rect)
-                self.selection_rect_item.setPen(QPen(QColor(Qt.blue), 2))
-                self.selection_rect_item.setBrush(QBrush(QColor(0, 0, 255, 50)))
+                self.selection_rect_item.setPen(QPen(QColor(*LIGHT_THEME.selection_rgb), 2))
+                self.selection_rect_item.setBrush(
+                    QBrush(QColor(*LIGHT_THEME.selection_rgb, LIGHT_THEME.selection_fill_alpha))
+                )
                 self.scene.addItem(self.selection_rect_item)
             else:
                 self.selection_rect_item.setRect(rect)

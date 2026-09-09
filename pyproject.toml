@@ -57,6 +57,8 @@ module = [
     "app.page_split",
     "app.encryption",
     "app.model",
+    "app.text_search",
+    "app.recent_files",
 ]
 strict = true
 

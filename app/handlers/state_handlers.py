@@ -8,7 +8,6 @@ in sync with the controller and viewer.
 from __future__ import annotations
 
 import os
-import time
 from typing import TYPE_CHECKING, Dict
 
 from PySide6.QtWidgets import QListWidgetItem, QMessageBox, QStyle
@@ -20,6 +19,8 @@ from app.model import (
     RedactDelete,
     RedactReplace,
     RemoveSectionAsImage,
+    WatermarkImage,
+    WatermarkText,
 )
 
 if TYPE_CHECKING:
@@ -96,6 +97,8 @@ class StateUpdateMixin:
             "RedactReplace": tr("history.op.replace"),
             "CropMargins": tr("history.op.crop"),
             "RemoveSectionAsImage": tr("history.op.remove_section"),
+            "WatermarkText": tr("history.op.watermark"),
+            "WatermarkImage": tr("history.op.image_watermark"),
         }
         return op_type_map.get(op.__class__.__name__, op.__class__.__name__)
 
@@ -126,7 +129,6 @@ class StateUpdateMixin:
                 op_str += f" ({text_len} {tr('history.chars')})"
                 if op.fontfile:
                     op_str += f" [{tr('history.font')}: {os.path.basename(op.fontfile)}]"
-                op_str += f" @ {time.strftime('%H:%M:%S')}"
             elif isinstance(op, CropMargins):
                 margins = []
                 if op.top > 0:
@@ -141,7 +143,10 @@ class StateUpdateMixin:
                     op_str += f" ({', '.join(margins)} pt)"
             elif isinstance(op, RemoveSectionAsImage):
                 op_str += f" ({op.dpi} DPI, {op.format.upper()}, {op.remove_rect.height:.0f}pt {tr('history.removed')})"
-                op_str += f" @ {time.strftime('%H:%M:%S')}"
+            elif isinstance(op, WatermarkText):
+                op_str += f" ({len(op.text)} {tr('history.chars')})"
+            elif isinstance(op, WatermarkImage):
+                op_str += f" ({os.path.basename(op.image_path)})"
 
             item = QListWidgetItem(f"{i + 1}. {op_str}")
 
@@ -164,34 +169,31 @@ class StateUpdateMixin:
 
     def _update_edit_action_states(self: "MainWindow") -> None:  # type: ignore[misc]
         session = self.controller.session
-        if session and self.viewer.current_page_index != -1:
-            self.undo_action.setEnabled(bool(session.history))
-            self.redo_action.setEnabled(bool(session.redo_stack))
-            self.delete_action.setEnabled(bool(self.last_selected_rect))
-            self.replace_action.setEnabled(bool(self.last_selected_rect))
-            self.prev_page_action.setEnabled(self.viewer.current_page_index > 0)
-            self.next_page_action.setEnabled(self.viewer.current_page_index < session.doc.page_count - 1)
-            self.zoom_in_action.setEnabled(True)
-            self.zoom_out_action.setEnabled(True)
-            self.fit_to_width_action.setEnabled(True)
-            self.history_dock.setEnabled(True)
-            self.toggle_history_action.setEnabled(True)
-            self.thumbnail_dock.setEnabled(True)
-            self.toggle_thumbnails_action.setEnabled(True)
-        else:
-            self.undo_action.setEnabled(False)
-            self.redo_action.setEnabled(False)
-            self.delete_action.setEnabled(False)
-            self.replace_action.setEnabled(False)
-            self.prev_page_action.setEnabled(False)
-            self.next_page_action.setEnabled(False)
-            self.zoom_in_action.setEnabled(False)
-            self.zoom_out_action.setEnabled(False)
-            self.fit_to_width_action.setEnabled(False)
-            self.history_dock.setEnabled(False)
-            self.toggle_history_action.setEnabled(False)
-            self.thumbnail_dock.setEnabled(False)
-            self.toggle_thumbnails_action.setEnabled(False)
+        has_doc = bool(session) and self.viewer.current_page_index != -1
+        has_selection = has_doc and bool(self.last_selected_rect)
+        page = self.viewer.current_page_index
+
+        self.undo_action.setEnabled(has_doc and bool(session.history))
+        self.redo_action.setEnabled(has_doc and bool(session.redo_stack))
+        self.delete_action.setEnabled(has_selection)
+        self.replace_action.setEnabled(has_selection)
+        self.prev_page_action.setEnabled(has_doc and page > 0)
+        self.next_page_action.setEnabled(has_doc and page < session.doc.page_count - 1)
+        self.page_spinbox.setEnabled(has_doc)
+        # Everything below only needs an open document.
+        for widget in (
+            self.zoom_in_action,
+            self.zoom_out_action,
+            self.fit_to_width_action,
+            self.history_dock,
+            self.toggle_history_action,
+            self.thumbnail_dock,
+            self.toggle_thumbnails_action,
+            self.save_action,
+            self.close_action,
+            self.find_action,
+        ):
+            widget.setEnabled(has_doc)
 
     def _toggle_history_panel(  # type: ignore[misc]
         self: "MainWindow", checked: bool

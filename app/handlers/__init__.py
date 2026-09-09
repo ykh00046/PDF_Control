@@ -15,11 +15,13 @@ All state remains on ``MainWindow`` (``self.controller``, ``self.viewer``,
 from app.handlers.dialog_handlers import DialogHandlerMixin
 from app.handlers.edit_handlers import EditHandlerMixin
 from app.handlers.file_handlers import FileHandlerMixin
+from app.handlers.search_handlers import SearchHandlerMixin
 from app.handlers.state_handlers import StateUpdateMixin
 
 __all__ = [
     "DialogHandlerMixin",
     "EditHandlerMixin",
     "FileHandlerMixin",
+    "SearchHandlerMixin",
     "StateUpdateMixin",
 ]

@@ -286,6 +286,7 @@ class DialogHandlerMixin:
         self.viewer.image_cache.clear()
         self.thumbnail_panel.refresh()
         self.thumbnail_panel.set_current_page(self.viewer.current_page_index)
+        self._rerun_search()  # hit page indices are stale after a reorder
 
     # --- Text export ----------------------------------------------------
     def open_text_export_dialog(self: "MainWindow") -> None:  # type: ignore[misc]
@@ -393,7 +394,11 @@ class DialogHandlerMixin:
 <h3>{tr("dialog.help.shortcuts_header")}</h3>
 <ul>
 <li><b>Ctrl+O</b> - {tr("dialog.help.shortcut.open")}</li>
+<li><b>Ctrl+S</b> - {tr("dialog.help.shortcut.save_inplace")}</li>
 <li><b>Ctrl+Shift+S</b> - {tr("dialog.help.shortcut.save")}</li>
+<li><b>Ctrl+W</b> - {tr("dialog.help.shortcut.close")}</li>
+<li><b>Ctrl+F</b> / <b>F3</b> - {tr("dialog.help.shortcut.find")}</li>
+<li><b>Ctrl+H</b> - {tr("dialog.help.shortcut.batch")}</li>
 <li><b>Ctrl+Z</b> - {tr("dialog.help.shortcut.undo")}</li>
 <li><b>Ctrl+Y</b> - {tr("dialog.help.shortcut.redo")}</li>
 <li><b>Del</b> - {tr("dialog.help.shortcut.delete")}</li>

@@ -14,6 +14,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QMessageBox, QStyle, QToolButton
 
 from app.i18n import tr
+from app.theme import LIGHT_THEME, label_style
 
 if TYPE_CHECKING:
     from app.ui import MainWindow
@@ -35,7 +36,7 @@ class StatusBarManager:
 
         # Current font indicator
         self._font_info = QLabel("")
-        self._font_info.setStyleSheet("color: #555; margin-right: 10px;")
+        self._font_info.setStyleSheet(label_style(LIGHT_THEME, "muted"))
         win.statusBar().addPermanentWidget(self._font_info)
         self.update_font_info()
 
@@ -123,10 +124,12 @@ class StatusBarManager:
             zoom_pct = int(win.viewer.zoom_level * 100)
             self._page_info.setText(tr("status.page_info", page_num, total, zoom_pct))
 
-            # Sync page spinbox (block signals to avoid recursion)
+            # Sync page spinbox (block signals to avoid recursion); the suffix
+            # shows the page total right next to the number ("Page 3 / 12").
             win.page_spinbox.blockSignals(True)
             win.page_spinbox.setMaximum(total)
             win.page_spinbox.setValue(page_num)
+            win.page_spinbox.setSuffix(f" / {total}")
             win.page_spinbox.blockSignals(False)
         else:
             self._page_info.setText("")
@@ -134,6 +137,7 @@ class StatusBarManager:
             win.page_spinbox.setMinimum(1)
             win.page_spinbox.setMaximum(1)
             win.page_spinbox.setValue(1)
+            win.page_spinbox.setSuffix("")
             win.page_spinbox.blockSignals(False)
 
     def update_font_info(self) -> None:

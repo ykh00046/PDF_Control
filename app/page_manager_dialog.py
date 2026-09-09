@@ -27,9 +27,11 @@ from PySide6.QtWidgets import (
 )
 
 from app.i18n import tr
+from app.icons import icon
 from app.logger import get_logger
 from app.page_split import compute_split_groups
 from app.split_dialog import SplitDialog
+from app.theme import LIGHT_THEME, label_style
 
 # Thumbnail rendering (shared with the sidebar via app.thumbnails)
 from app.thumbnails import THUMB_WIDTH, render_page_thumbnail
@@ -58,91 +60,76 @@ class PageManagerDialog(QDialog):
 
         # Info label
         self.info_label = QLabel(tr("page_manager.info"))
-        self.info_label.setStyleSheet("color: gray; font-style: italic;")
+        self.info_label.setStyleSheet(label_style(LIGHT_THEME, "muted"))
         layout.addWidget(self.info_label)
 
-        # Toolbar
-        toolbar = QToolBar()
-        toolbar.setIconSize(QSize(20, 20))
+        # Two toolbars: one row overflowed at the default dialog width and
+        # hid duplicate/extract/merge/split behind the extension chevron.
+        #   row 1 (arrange):  undo/redo | rotate L/R/180 | move up/down
+        #   row 2 (pages):    delete / insert blank / duplicate | extract / merge / split
+        icon_names = {
+            "page_manager.undo": "undo",
+            "page_manager.redo": "redo",
+            "page_manager.rotate_left": "rotate-left",
+            "page_manager.rotate_right": "rotate-right",
+            "page_manager.rotate_180": "rotate-180",
+            "page_manager.move_up": "up",
+            "page_manager.move_down": "down",
+            "page_manager.delete": "delete",
+            "page_manager.insert_blank": "insert-page",
+            "page_manager.duplicate": "duplicate",
+            "page_manager.extract": "extract",
+            "page_manager.merge": "merge",
+            "page_manager.split": "split",
+        }
 
-        self.undo_action = QAction(tr("page_manager.undo"), self)
-        self.undo_action.setToolTip(tr("page_manager.undo.tooltip"))
-        self.undo_action.setShortcut(QKeySequence.StandardKey.Undo)
-        self.undo_action.triggered.connect(self._undo_page_change)
-        toolbar.addAction(self.undo_action)
+        def make_action(key: str, slot, shortcut=None) -> QAction:
+            action = QAction(icon(icon_names[key]), tr(key), self)
+            action.setToolTip(tr(f"{key}.tooltip"))
+            action.setStatusTip(tr(f"{key}.tooltip"))
+            if shortcut is not None:
+                action.setShortcut(shortcut)
+            action.triggered.connect(slot)
+            return action
 
-        self.redo_action = QAction(tr("page_manager.redo"), self)
-        self.redo_action.setToolTip(tr("page_manager.redo.tooltip"))
-        self.redo_action.setShortcut(QKeySequence.StandardKey.Redo)
-        self.redo_action.triggered.connect(self._redo_page_change)
-        toolbar.addAction(self.redo_action)
+        arrange_bar = QToolBar()
+        arrange_bar.setIconSize(QSize(20, 20))
+        arrange_bar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.undo_action = make_action("page_manager.undo", self._undo_page_change, QKeySequence.StandardKey.Undo)
+        self.redo_action = make_action("page_manager.redo", self._redo_page_change, QKeySequence.StandardKey.Redo)
+        arrange_bar.addAction(self.undo_action)
+        arrange_bar.addAction(self.redo_action)
+        arrange_bar.addSeparator()
+        self.rotate_left_action = make_action("page_manager.rotate_left", lambda: self._rotate_selected(-90))
+        self.rotate_right_action = make_action("page_manager.rotate_right", lambda: self._rotate_selected(90))
+        self.rotate_180_action = make_action("page_manager.rotate_180", lambda: self._rotate_selected(180))
+        arrange_bar.addAction(self.rotate_left_action)
+        arrange_bar.addAction(self.rotate_right_action)
+        arrange_bar.addAction(self.rotate_180_action)
+        arrange_bar.addSeparator()
+        self.move_up_action = make_action("page_manager.move_up", self._move_up)
+        self.move_down_action = make_action("page_manager.move_down", self._move_down)
+        arrange_bar.addAction(self.move_up_action)
+        arrange_bar.addAction(self.move_down_action)
+        layout.addWidget(arrange_bar)
 
-        toolbar.addSeparator()
-
-        self.rotate_left_action = QAction(tr("page_manager.rotate_left"), self)
-        self.rotate_left_action.setToolTip(tr("page_manager.rotate_left.tooltip"))
-        self.rotate_left_action.triggered.connect(lambda: self._rotate_selected(-90))
-        toolbar.addAction(self.rotate_left_action)
-
-        self.rotate_right_action = QAction(tr("page_manager.rotate_right"), self)
-        self.rotate_right_action.setToolTip(tr("page_manager.rotate_right.tooltip"))
-        self.rotate_right_action.triggered.connect(lambda: self._rotate_selected(90))
-        toolbar.addAction(self.rotate_right_action)
-
-        self.rotate_180_action = QAction(tr("page_manager.rotate_180"), self)
-        self.rotate_180_action.setToolTip(tr("page_manager.rotate_180.tooltip"))
-        self.rotate_180_action.triggered.connect(lambda: self._rotate_selected(180))
-        toolbar.addAction(self.rotate_180_action)
-
-        toolbar.addSeparator()
-
-        self.delete_action = QAction(tr("page_manager.delete"), self)
-        self.delete_action.setToolTip(tr("page_manager.delete.tooltip"))
-        self.delete_action.triggered.connect(self._delete_selected)
-        toolbar.addAction(self.delete_action)
-
-        toolbar.addSeparator()
-
-        self.insert_action = QAction(tr("page_manager.insert_blank"), self)
-        self.insert_action.setToolTip(tr("page_manager.insert_blank.tooltip"))
-        self.insert_action.triggered.connect(self._insert_blank_page)
-        toolbar.addAction(self.insert_action)
-
-        toolbar.addSeparator()
-
-        self.move_up_action = QAction(tr("page_manager.move_up"), self)
-        self.move_up_action.setToolTip(tr("page_manager.move_up.tooltip"))
-        self.move_up_action.triggered.connect(self._move_up)
-        toolbar.addAction(self.move_up_action)
-
-        self.move_down_action = QAction(tr("page_manager.move_down"), self)
-        self.move_down_action.setToolTip(tr("page_manager.move_down.tooltip"))
-        self.move_down_action.triggered.connect(self._move_down)
-        toolbar.addAction(self.move_down_action)
-
-        toolbar.addSeparator()
-
-        self.duplicate_action = QAction(tr("page_manager.duplicate"), self)
-        self.duplicate_action.setToolTip(tr("page_manager.duplicate.tooltip"))
-        self.duplicate_action.triggered.connect(self._duplicate_selected)
-        toolbar.addAction(self.duplicate_action)
-
-        self.extract_action = QAction(tr("page_manager.extract"), self)
-        self.extract_action.setToolTip(tr("page_manager.extract.tooltip"))
-        self.extract_action.triggered.connect(self._extract_selected)
-        toolbar.addAction(self.extract_action)
-
-        self.merge_action = QAction(tr("page_manager.merge"), self)
-        self.merge_action.setToolTip(tr("page_manager.merge.tooltip"))
-        self.merge_action.triggered.connect(self._merge_pdf)
-        toolbar.addAction(self.merge_action)
-
-        self.split_action = QAction(tr("page_manager.split"), self)
-        self.split_action.setToolTip(tr("page_manager.split.tooltip"))
-        self.split_action.triggered.connect(self._split_document)
-        toolbar.addAction(self.split_action)
-
-        layout.addWidget(toolbar)
+        pages_bar = QToolBar()
+        pages_bar.setIconSize(QSize(20, 20))
+        pages_bar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.delete_action = make_action("page_manager.delete", self._delete_selected)
+        self.insert_action = make_action("page_manager.insert_blank", self._insert_blank_page)
+        self.duplicate_action = make_action("page_manager.duplicate", self._duplicate_selected)
+        pages_bar.addAction(self.delete_action)
+        pages_bar.addAction(self.insert_action)
+        pages_bar.addAction(self.duplicate_action)
+        pages_bar.addSeparator()
+        self.extract_action = make_action("page_manager.extract", self._extract_selected)
+        self.merge_action = make_action("page_manager.merge", self._merge_pdf)
+        self.split_action = make_action("page_manager.split", self._split_document)
+        pages_bar.addAction(self.extract_action)
+        pages_bar.addAction(self.merge_action)
+        pages_bar.addAction(self.split_action)
+        layout.addWidget(pages_bar)
 
         # Page list with thumbnails
         self.page_list = QListWidget()

@@ -17,6 +17,8 @@
 - ✂️ **Text Selection & Deletion** - Select and remove text from PDFs
 - 🔄 **Text Replacement** - Replace selected text with custom content
 - 🔍 **Batch Find/Replace** - Search and replace across entire documents
+- 🔎 **Find in Document** - `Ctrl+F` search bar with live highlights, next/previous, match case
+- 🕘 **Recent Files** - File → Open Recent (last 10), plus plain Save (`Ctrl+S`) and Close (`Ctrl+W`)
 - ↩️ **Undo/Redo** - Full operation history with unlimited undo/redo
 - 📋 **History Panel** - Visual timeline of all operations
 - 🖼️ **Section Removal** - Convert sections to images and remove from PDF
@@ -63,7 +65,7 @@ python main.py
    - **Edit → Delete Text** to remove selected text
    - **Edit → Replace Text** to replace with new content
    - **Edit → Batch Replace** for find/replace operations
-5. Save your changes: **File → Save As** (or `Ctrl+S`)
+5. Save your changes: **File → Save** (`Ctrl+S`, overwrites in place) or **File → Save As** (`Ctrl+Shift+S`)
 
 ---
 

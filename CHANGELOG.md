@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+- Improved (modern look): the toolbar now uses crisp line icons with captions (Open, Save, Undo, Redo, Delete, Replace, Find, page navigation, zoom) instead of text-only buttons; side panels have flat titles with a single close button; the page sits on the canvas with a margin and soft shadow; page thumbnails are framed cards; and an "Open PDF" welcome card appears when no document is open. Body text is slightly larger (10pt). No new image files are shipped — icons are built in.
+- Fixed: the Crop Page dialog (Tools → Crop Page…) crashed on open with an AttributeError; it works again and is now covered by a test.
+- Improved (screen layout review): the Edit menu now lists "Delete Selection" and "Replace Selection…" (previously only reachable via Del / Ctrl+R and the toolbar); "Batch Find/Replace…" moved next to Find (Edit menu, Ctrl+H); Help gained a "Shortcuts & Usage" entry (F1). The toolbar is reordered to Open/Save | Undo/Redo | Delete/Replace | Find | page navigation, with the page box showing "Page N / total".
+- Improved: the Page Manager's actions are split across two rows so Duplicate / Extract / Merge / Split are no longer hidden behind an overflow arrow at the default window size; Remove Section's buttons now follow the same [action][Cancel] order as every other dialog; panel titles match their View-menu entries; the watermark color button shows "Choose…" instead of a raw hex code; the page thumbnail sidebar is a single clean column.
+- Improved: refreshed the visual design with a single design system (Windows 11 Fluent-style): consistent neutral surfaces, one accent color for primary buttons/selection/focus, rounded controls, uniform spacing, styled scrollbars and sliders, and an accent-colored default button in dialogs. All colors and spacing now come from one token file, so the look stays consistent across every window and dialog.
+- Improved: polished Korean UI text (removed status-bar emoji, translated-sounding phrases, and dashes; clearer status messages).
+- Added Find in document: Edit → Find… (Ctrl+F) opens a search bar under the viewer. Matches update live as you type, are highlighted on the page (the current one in orange), and Enter / F3 / Shift+F3 step through them across pages. A "Match case" toggle makes the search case-sensitive.
+- Added plain Save (Ctrl+S): overwrites the open file in place (safely, via a temp file swap) instead of always asking for a new name. Password-protected documents are redirected to "Encrypt & Save As…" so their protection is never silently dropped.
+- Added Close (Ctrl+W) and File → Open Recent (last 10 files; entries that no longer exist are removed automatically, with a "Clear Recent Files" item).
+- Fixed: the history panel showed raw class names ("WatermarkText") for watermark operations and a timestamp that was actually the time the panel was last redrawn; watermarks now have proper labels and the misleading timestamp is gone.
+- Fixed: "Save As…" suggested a name identical to the original for files with an upper-case ".PDF" extension.
+- Internal: unified the "save changes?" prompt used by open / close / exit / drag-drop, simplified the action-state update, and made the preview image cache a true LRU.
 - Fixed: text export's "page range" option now works — entering a range like "1-3, 5, 7-9" exports exactly those pages. Previously selecting the range option silently exported only the current page.
 - Added watermark tiling: both text and image watermark dialogs now have a "Tile across the page" option that repeats the watermark in a grid instead of placing a single one at the center.
 - Internal: applied the ruff formatter across the codebase and added a format check to CI (formatting only — no behavior change).

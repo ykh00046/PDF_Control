@@ -1,29 +1,33 @@
 """Toolbar construction for MainWindow.
 
-Builds the edit toolbar (delete/replace/undo/redo/page nav/spinbox) and the
-zoom toolbar. Reuses the QAction instances created by MenuBuilder so menu
-and toolbar stay in lock-step.
+One main toolbar (icon + caption under it, like Windows Photos / Acrobat's
+light UI), reusing the QAction instances created by MenuBuilder so menu and
+toolbar stay in lock-step (label, tooltip, shortcut, enabled state):
 
-Pre-condition: MenuBuilder.build() must run before ToolbarBuilder.build()
-because the toolbar reuses ``undo_action``, ``redo_action``,
-``zoom_in_action``, ``zoom_out_action``, ``fit_to_width_action``.
+    [open][save] | [undo][redo] | [delete][replace] | [find]
+    | [prev][page N / total][next] | [zoom in][zoom out][fit width]
+
+Pre-condition: MenuBuilder.build() must run before ToolbarBuilder.build().
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from PySide6.QtGui import QAction
-from PySide6.QtWidgets import QSpinBox
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtWidgets import QSizePolicy, QSpinBox, QWidget
 
 from app.i18n import tr
+from app.icons import icon
 
 if TYPE_CHECKING:
     from app.ui import MainWindow
 
+TOOLBAR_ICON_PX = 22
+
 
 class ToolbarBuilder:
-    """Builds the MainWindow toolbars and attaches actions to the window."""
+    """Builds the MainWindow toolbar and attaches widgets to the window."""
 
     def __init__(self, window: "MainWindow") -> None:
         self._win = window
@@ -31,47 +35,59 @@ class ToolbarBuilder:
     def build(self) -> None:
         win = self._win
         toolbar = win.addToolBar(tr("toolbar.edit"))
+        toolbar.setObjectName("mainToolbar")
+        toolbar.setMovable(False)
+        toolbar.setFloatable(False)
+        toolbar.setIconSize(QSize(TOOLBAR_ICON_PX, TOOLBAR_ICON_PX))
+        toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
 
-        win.delete_action = QAction(tr("toolbar.delete"), win)
-        win.delete_action.setToolTip(tr("toolbar.delete.tooltip"))
-        win.delete_action.triggered.connect(win.delete_selection)
-        toolbar.addAction(win.delete_action)
-
-        win.replace_action = QAction(tr("toolbar.replace"), win)
-        win.replace_action.setToolTip(tr("toolbar.replace.tooltip"))
-        win.replace_action.triggered.connect(win.replace_selection)
-        toolbar.addAction(win.replace_action)
-
+        # Document
+        toolbar.addAction(win.open_action)
+        toolbar.addAction(win.save_action)
         toolbar.addSeparator()
 
-        # Reuse undo/redo actions from menu to maintain state synchronization.
+        # History
         toolbar.addAction(win.undo_action)
         toolbar.addAction(win.redo_action)
-
         toolbar.addSeparator()
 
-        win.prev_page_action = QAction(tr("toolbar.prev_page"), win)
-        win.prev_page_action.triggered.connect(win.viewer.prev_page)
-        toolbar.addAction(win.prev_page_action)
+        # Selection edits
+        toolbar.addAction(win.delete_action)
+        toolbar.addAction(win.replace_action)
+        toolbar.addSeparator()
 
-        # Page jump (GoTo) SpinBox.
+        # Find
+        toolbar.addAction(win.find_action)
+        toolbar.addSeparator()
+
+        # Page navigation: prev | [page N / total] | next
+        win.prev_page_action = toolbar.addAction(icon("prev"), tr("toolbar.prev_page"))
+        win.prev_page_action.setToolTip(tr("toolbar.prev_page.tooltip"))
+        win.prev_page_action.triggered.connect(win.viewer.prev_page)
+
         win.page_spinbox = QSpinBox()
         win.page_spinbox.setMinimum(1)
         win.page_spinbox.setMaximum(1)
         win.page_spinbox.setPrefix(tr("toolbar.page_prefix"))
         win.page_spinbox.setSuffix("")
         win.page_spinbox.setToolTip(tr("toolbar.page_goto.tooltip"))
-        win.page_spinbox.setFixedWidth(100)
+        win.page_spinbox.setFixedWidth(120)
+        win.page_spinbox.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        win.page_spinbox.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
         win.page_spinbox.valueChanged.connect(win._on_page_spinbox_changed)
         toolbar.addWidget(win.page_spinbox)
 
-        win.next_page_action = QAction(tr("toolbar.next_page"), win)
+        win.next_page_action = toolbar.addAction(icon("next"), tr("toolbar.next_page"))
+        win.next_page_action.setToolTip(tr("toolbar.next_page.tooltip"))
         win.next_page_action.triggered.connect(win.viewer.next_page)
-        toolbar.addAction(win.next_page_action)
 
-        zoom_toolbar = win.addToolBar(tr("toolbar.zoom"))
-        zoom_toolbar.addAction(win.zoom_in_action)
-        zoom_toolbar.addAction(win.zoom_out_action)
-        zoom_toolbar.addAction(win.fit_to_width_action)
+        # Push zoom controls to the right edge.
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        toolbar.addWidget(spacer)
+
+        toolbar.addAction(win.zoom_out_action)
+        toolbar.addAction(win.zoom_in_action)
+        toolbar.addAction(win.fit_to_width_action)
 
         win._update_edit_action_states()  # Set initial states.

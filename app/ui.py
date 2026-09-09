@@ -33,18 +33,22 @@ from PySide6.QtWidgets import (
 
 from app.config import get_config_value, load_config
 from app.controller import EditorController
+from app.find_bar import FindBar
 from app.handlers import (
     DialogHandlerMixin,
     EditHandlerMixin,
     FileHandlerMixin,
+    SearchHandlerMixin,
     StateUpdateMixin,
 )
 from app.i18n import load_translations, tr
 from app.logger import get_logger, setup_logger
+from app.theme import LIGHT_THEME, build_stylesheet
 from app.thumbnail_panel import ThumbnailSidebar
 from app.ui_menu import MenuBuilder, ShortcutBuilder
 from app.ui_statusbar import StatusBarManager
 from app.ui_toolbar import ToolbarBuilder
+from app.ui_widgets import EmptyState, apply_dock_chrome
 from app.viewer import PDFViewer
 
 
@@ -53,6 +57,7 @@ class MainWindow(
     FileHandlerMixin,
     EditHandlerMixin,
     DialogHandlerMixin,
+    SearchHandlerMixin,
     StateUpdateMixin,
 ):
     """Main application window."""
@@ -94,17 +99,43 @@ class MainWindow(
 
         # --- Central viewer ------------------------------------------------
         central_widget = QWidget(self)
+        central_widget.setObjectName("centralWidget")
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
         self.viewer = PDFViewer(self)
-        self.viewer.setBackgroundBrush(QColor(245, 245, 245))
+        self.viewer.setBackgroundBrush(QColor(LIGHT_THEME.bg_app))
+        self.viewer.setFrameShape(PDFViewer.Shape.NoFrame)
         layout.addWidget(self.viewer)
+
+        # Empty state replaces the blank canvas until a document is open.
+        self.empty_state = EmptyState(self)
+        self.empty_state.open_requested.connect(self.open_file)
+        layout.addWidget(self.empty_state)
+        self.viewer.hide()
+        self.controller.document_loaded.connect(lambda _path: self._show_canvas(True))
+        self.controller.document_closed.connect(lambda: self._show_canvas(False))
         self.viewer.selection_made.connect(self.handle_selection_made)
         self.viewer.page_changed.connect(self._handle_page_changed)
         self.viewer.render_started.connect(lambda: self.statusBar().showMessage(tr("status.rendering")))
         self.viewer.render_finished.connect(lambda: self.statusBar().showMessage(tr("status.render_ready")))
         self.viewer.render_finished.connect(self._update_status_bar_page_info)
+
+        # --- Find bar (hidden until Ctrl+F) --------------------------------
+        self._search_hits = []
+        self._search_current = -1
+        self.find_bar = FindBar(self)
+        self.find_bar.hide()
+        layout.addWidget(self.find_bar)
+        self.find_bar.search_requested.connect(self._on_find_query)
+        self.find_bar.next_requested.connect(self.find_next)
+        self.find_bar.prev_requested.connect(self.find_prev)
+        self.find_bar.closed.connect(self._on_find_bar_closed)
+        self.viewer.page_changed.connect(self._apply_search_highlights)
+        self.controller.document_loaded.connect(self._reset_search)
+        self.controller.document_closed.connect(self._reset_search)
 
         # --- UI assembly ---------------------------------------------------
         self._setup_dock_widgets()
@@ -122,12 +153,19 @@ class MainWindow(
         self._apply_styles()
         self.setAcceptDrops(True)
 
+    def _show_canvas(self, has_document: bool) -> None:
+        """Swap between the viewer and the empty-state placeholder."""
+        self.viewer.setVisible(has_document)
+        self.empty_state.setVisible(not has_document)
+
     # ------------------------------------------------------------------ docks
     def _setup_dock_widgets(self) -> None:
         # Operation History Dock
         self.history_dock = QDockWidget(tr("history_panel.title"), self)
+        apply_dock_chrome(self.history_dock, tr("history_panel.title"))
         self.history_list_widget = QListWidget()
         self.history_list_widget.setAlternatingRowColors(True)
+        self.history_list_widget.setFrameShape(QListWidget.Shape.NoFrame)
         self.history_dock.setWidget(self.history_list_widget)
         self.addDockWidget(Qt.RightDockWidgetArea, self.history_dock)
 
@@ -139,7 +177,9 @@ class MainWindow(
 
         # Page Thumbnail Sidebar
         self.thumbnail_dock = QDockWidget(tr("thumbnail_panel.title"), self)
+        apply_dock_chrome(self.thumbnail_dock, tr("thumbnail_panel.title"))
         self.thumbnail_panel = ThumbnailSidebar()
+        self.thumbnail_panel.setFrameShape(ThumbnailSidebar.Shape.NoFrame)
         self.thumbnail_dock.setWidget(self.thumbnail_panel)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.thumbnail_dock)
         self.thumbnail_panel.page_selected.connect(self._go_to_page)
@@ -180,54 +220,7 @@ class MainWindow(
 
     # --------------------------------------------------------------- styles
     def _apply_styles(self) -> None:
-        # The app forces a light theme. On Windows dark mode the OS supplies a
-        # dark palette, so every surface that hosts our dark text (#1a1a1a)
-        # MUST also pin a light background here, or the text renders dark-on-
-        # dark and disappears. This includes popups (QMenu, QMessageBox,
-        # QDialog, QComboBox drop-downs, QToolTip) that are separate top-level
-        # windows. QMenu::item also needs explicit padding: once a stylesheet
-        # touches QMenu, Qt drops native item metrics and the label collides
-        # with its shortcut text without a right pad.
-        self.setStyleSheet(
-            """
-            QMainWindow { background: #f7f8fa; color: #1a1a1a; }
-            QDialog { background: #f7f8fa; color: #1a1a1a; }
-            QMenuBar { background: #f0f2f5; color: #1a1a1a; }
-            QMenuBar::item:selected { background: #d0d4da; }
-            QMenu { background: #ffffff; color: #1a1a1a; border: 1px solid #d0d4da; }
-            QMenu::item { padding: 5px 28px 5px 24px; }
-            QMenu::item:selected { background: #0078d4; color: #ffffff; }
-            QMenu::item:disabled { color: #a0a0a0; }
-            QMenu::separator { height: 1px; background: #e0e2e6; margin: 4px 8px; }
-            QToolBar { spacing: 6px; padding: 4px 6px; background: #f0f2f5; border: 1px solid #e0e2e6; color: #1a1a1a; }
-            QToolBar QToolButton { color: #1a1a1a; }
-            QStatusBar { background: #f7f8fa; color: #1a1a1a; }
-            QStatusBar QLabel { color: #1a1a1a; }
-            QDockWidget { color: #1a1a1a; }
-            QDockWidget::title { font-weight: bold; padding: 4px; background: #f0f2f5; color: #1a1a1a; }
-            QListWidget { padding: 4px; background: #ffffff; color: #1a1a1a; }
-            QListWidget::item:alternate { background: #f5f6f8; }
-            QSpinBox { background: #ffffff; color: #1a1a1a; border: 1px solid #ccc; padding: 2px; }
-            QLabel { color: #1a1a1a; }
-            QMessageBox { background: #f7f8fa; }
-            QMessageBox QLabel { color: #1a1a1a; }
-            QLineEdit, QTextEdit, QPlainTextEdit {
-                background: #ffffff; color: #1a1a1a; border: 1px solid #ccc; padding: 2px;
-            }
-            QComboBox { background: #ffffff; color: #1a1a1a; border: 1px solid #ccc; padding: 2px; }
-            QComboBox QAbstractItemView {
-                background: #ffffff; color: #1a1a1a;
-                selection-background-color: #0078d4; selection-color: #ffffff;
-            }
-            QCheckBox { color: #1a1a1a; }
-            QRadioButton { color: #1a1a1a; }
-            QGroupBox { color: #1a1a1a; }
-            QPushButton {
-                background: #ffffff; color: #1a1a1a; border: 1px solid #ccc;
-                padding: 4px 12px; border-radius: 3px;
-            }
-            QPushButton:hover { background: #eef4fb; }
-            QPushButton:disabled { color: #a0a0a0; background: #f0f0f0; }
-            QToolTip { background: #ffffff; color: #1a1a1a; border: 1px solid #ccc; }
-            """
-        )
+        # Single source of truth for colors/spacing/typography: app/theme.py.
+        # The app forces a light theme; every popup surface pins a light
+        # background so dark text survives Windows dark mode (see theme.py).
+        self.setStyleSheet(build_stylesheet(LIGHT_THEME))

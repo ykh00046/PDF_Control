@@ -36,6 +36,9 @@ STRICT_LEAF_MODULES = [
     "app/document_session.py",
     "app/document_model.py",
     "app/model.py",
+    # r8-ux-expansion (2026-09-09): find + recent files pure helpers
+    "app/text_search.py",
+    "app/recent_files.py",
 ]
 
 

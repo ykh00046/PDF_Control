@@ -35,11 +35,17 @@ class ThumbnailSidebar(QListWidget):
         self._generation = 0
         self._syncing = False
 
+        thumb_h = int(SIDEBAR_THUMB_WIDTH * 1.414)
         self.setViewMode(QListWidget.IconMode)
-        self.setIconSize(QSize(SIDEBAR_THUMB_WIDTH, int(SIDEBAR_THUMB_WIDTH * 1.414)))
-        self.setSpacing(8)
+        self.setIconSize(QSize(SIDEBAR_THUMB_WIDTH, thumb_h))
+        # One vertical column of fixed-size cells: without an explicit grid
+        # the icons overflowed their label-sized cells and overlapped when the
+        # dock was wide enough for two columns (layout review, 2026-09-09).
+        self.setGridSize(QSize(SIDEBAR_THUMB_WIDTH + 24, thumb_h + 28))
+        self.setFlow(QListWidget.Flow.TopToBottom)
+        self.setWrapping(False)
+        self.setSpacing(4)
         self.setResizeMode(QListWidget.Adjust)
-        self.setWrapping(True)
         self.setMovement(QListWidget.Static)
         self.setSelectionMode(QAbstractItemView.SingleSelection)
         self.setMinimumWidth(SIDEBAR_THUMB_WIDTH + 40)

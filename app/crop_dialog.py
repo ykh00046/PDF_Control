@@ -1,6 +1,6 @@
 import fitz
 from PySide6.QtCore import QRectF, Qt, Signal
-from PySide6.QtGui import QBrush, QColor, QImage, QPen, QPixmap
+from PySide6.QtGui import QBrush, QColor, QImage, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -52,7 +52,7 @@ class CropPreviewDialog(QDialog):
 
         self.scene = QGraphicsScene()
         self.view = QGraphicsView(self.scene)
-        self.view.setRenderHint(QPen.Antialiasing)
+        self.view.setRenderHint(QPainter.Antialiasing)
         layout.addWidget(self.view)
 
         # Crop options

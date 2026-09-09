@@ -32,6 +32,7 @@ a = Analysis(
         "PySide6.QtGui",
         "PySide6.QtWidgets",
         "PySide6.QtPrintSupport",
+        "PySide6.QtSvg",  # inline toolbar icons (app/icons.py)
         "app.batch_replace_dialog",
         "app.crop_dialog",
         "app.fonts",

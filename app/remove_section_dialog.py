@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.i18n import tr
+from app.theme import LIGHT_THEME, callout_style, invalid_field_style
 
 
 class RemoveSectionDialog(QDialog):
@@ -38,9 +39,7 @@ class RemoveSectionDialog(QDialog):
         # 1. 경고 메시지
         warning_label = QLabel(f"<h3>⚠️ {tr('remove.warning.title')}</h3><p>{tr('remove.warning.message')}</p>")
         warning_label.setWordWrap(True)
-        warning_label.setStyleSheet(
-            "background-color: #fff3cd; color: #664d03; padding: 10px; border: 1px solid #ffc107; border-radius: 4px;"
-        )
+        warning_label.setStyleSheet(callout_style(LIGHT_THEME, "warning"))
         layout.addWidget(warning_label)
 
         # 2. 정밀 좌표 입력 그룹
@@ -90,9 +89,7 @@ class RemoveSectionDialog(QDialog):
         # 3. 결과 정보 (실시간 갱신됨)
         self.info_label = QLabel()
         self.info_label.setWordWrap(True)
-        self.info_label.setStyleSheet(
-            "padding: 10px; border: 1px solid #ccc; border-radius: 4px; background-color: #f8f9fa; color: #1a1a1a;"
-        )
+        self.info_label.setStyleSheet(callout_style(LIGHT_THEME, "neutral"))
         layout.addWidget(self.info_label)
         self._update_info_label()
 
@@ -121,9 +118,12 @@ class RemoveSectionDialog(QDialog):
         apply_btn = QPushButton(tr("remove.button.apply"))
         cancel_btn.clicked.connect(self.reject)
         apply_btn.clicked.connect(self.apply_remove)
+        # Windows order: primary action first, Cancel last (matches every
+        # other dialog in the app).
+        apply_btn.setDefault(True)
         button_layout.addStretch()
-        button_layout.addWidget(cancel_btn)
         button_layout.addWidget(apply_btn)
+        button_layout.addWidget(cancel_btn)
         layout.addLayout(button_layout)
 
     def _on_coords_changed(self):
@@ -133,8 +133,8 @@ class RemoveSectionDialog(QDialog):
 
         # 유효성 검사 (y1은 y0보다 커야 함)
         if y1 <= y0:
-            self.y1_spin.setStyleSheet("border: 1px solid red;")
-            self.y0_spin.setStyleSheet("border: 1px solid red;")
+            self.y1_spin.setStyleSheet(invalid_field_style(LIGHT_THEME))
+            self.y0_spin.setStyleSheet(invalid_field_style(LIGHT_THEME))
         else:
             self.y1_spin.setStyleSheet("")
             self.y0_spin.setStyleSheet("")

@@ -6,7 +6,7 @@
 > **Tech Stack**: PySide6 + PyMuPDF
 > **Status**: Active Development
 > **Created**: 2025-12-16
-> **Last Modified**: 2026-06-10
+> **Last Modified**: 2026-09-09
 
 ---
 
@@ -210,6 +210,22 @@ _None currently tracked. Open a new item here if one surfaces._
 ### Resolved (2026-06-14, text-export-range PDCA)
 
 - ~~텍스트 내보내기 "페이지 범위" 끊긴 연결~~: `TextExportDialog`에 range 라디오/입력란은 있었으나 `get_settings()`가 range를 버려(scope를 all/current로만, range_edit 미독) 범위 선택 시 **현재 페이지만 조용히 내보내짐**. 또 `tr()`로 참조하는 `text_export.scope.range`/`range.placeholder` i18n 키가 en/ko 양쪽에 **없었음**(패리티 동수라 미검출). 수정: get_settings 3-scope+range 반환, `apply_text_export`가 기존 `parse_page_ranges`(재사용) 파싱→평탄화→`resolve_indices` 정렬·중복제거. ValueError 안전 중단. 누락 i18n 3키 복구. 백엔드 신규 0(연결만). 287 tests pass. 후보: validate_i18n에 tr() 참조 키 검증 추가.
+
+### Added (2026-09-09, modern-look PDCA)
+
+- **"촌스럽다" 피드백 → 외관 현대화**: 토큰만 바꾼 design-system 사이클로는 부족했던 이유는 ①텍스트 전용 툴바 ②Qt 기본 도크 제목줄 ③페이지가 여백·그림자 없이 납작 ④빈 회색 초기 화면 ⑤테두리 없는 썸네일. 조치: (1) `app/icons.py` — **이미지 자산 없이 인라인 SVG 라인 아이콘 40종**(24px, stroke 1.6, Fluent 스타일)을 QtSvg로 렌더·토큰 색 틴트·2x 래스터(HiDPI)·Disabled 모드 자동 생성, lru_cache. `pdf_control.spec` hiddenimports에 `PySide6.QtSvg` 추가. (2) 메인 툴바 `ToolButtonTextUnderIcon`(아이콘 22px + 캡션), 줌은 우측 정렬 스페이서, 페이지 상자 버튼 제거·중앙 정렬. (3) `app/ui_widgets.py` `DockTitleBar`(플랫 라벨+닫기, float 제거) + `EmptyState`(문서 없을 때 아이콘·안내·"PDF 열기" 카드, 뷰어와 스왑). (4) 뷰어 페이지 `QGraphicsDropShadowEffect` + 32px 여백(픽스맵은 원점 유지 → 좌표 변환 불변). (5) 썸네일 1px 테두리(`render_page_thumbnail(framed=True)`). (6) 본문 10pt(WinUI 14px 기준), 툴바 배경 흰색. 페이지 관리·찾기 바도 아이콘화. `tests/test_icons.py`(전 아이콘 렌더 비공백 검증 등 45). 434 tests pass.
+
+### Resolved (2026-09-09, ui-layout-review PDCA)
+
+- ~~화면 구성·버튼 위치/명칭 불일치~~: 사용자 요청으로 메뉴/툴바/다이얼로그를 전수 재검토. **실제 버그**: `crop_dialog.py`가 `QPen.Antialiasing`(존재하지 않음)을 호출해 **페이지 자르기 다이얼로그가 열리자마자 AttributeError** — 테스트가 없어 미검출이었음 → `QPainter.Antialiasing` + 회귀 테스트. **구성**: (1) 편집 메뉴에 "선택 영역 삭제/교체" 항목이 없고 툴바·단축키에만 있던 것 추가(메뉴 QAction을 툴바가 재사용 → 라벨/툴팁/활성 상태 단일화, 툴바 표시는 `setIconText`로 짧은 라벨 — 없으면 "저장(S)"처럼 니모닉이 노출됨). (2) "일괄 찾기/교체"를 도구→편집(찾기 그룹, Ctrl+H)으로 이동. (3) 도움말 메뉴에 F1 항목 추가(단축키만 있었음). (4) 툴바 순서 [열기][저장]|[실행 취소][다시 실행]|[선택 삭제][선택 교체]|[찾기]|[이전][페이지 N / 총수][다음]. (5) 페이지 관리 툴바가 기본 폭에서 넘쳐 복제/추출/병합/분할이 숨겨지던 것 → 2줄(정렬/페이지)로 분리 + 라벨 단축. (6) 영역 제거만 [취소][적용] 순서였던 것 통일(주 버튼 먼저) + 테스트로 전 다이얼로그 고정. (7) 명칭 통일: 폰트→글꼴, "워터마크 추가"→"텍스트 워터마크 추가", 도크 제목↔보기 메뉴 토글 이름 일치, 워터마크 색상 버튼 hex 텍스트→"선택...". (8) 썸네일 사이드바 IconMode에 grid 미지정으로 아이콘이 겹치던 것 → 단일 세로 열(`setGridSize`+`TopToBottom`). `tests/test_ui_layout.py` 8종. 389 tests pass.
+
+### Added (2026-09-09, design-system PDCA)
+
+- **디자인 시스템(토큰) 도입 + 한국어 문구 다듬기**: 사용자가 공유한 영상("클로드로 디자인할 때 프롬프트부터 넣지 마세요", 노디의 바이브코딩)의 3단계 — ①상황에 맞는 레퍼런스 ②디자인 시스템 추출·적용 ③AI 티 나는 문구 정리 — 를 적용. 레퍼런스는 앱이 실제로 놓이는 **Windows 11 Fluent**(중성 레이어 표면, 단일 강조색 `#0067c0`, 4px 라운드, 8px 간격, 1px 얇은 테두리). `app/theme.py`(mypy strict) `Theme` 데이터클래스가 색/타이포/간격/라운드/뷰어 오버레이 색을 **단일 토큰 소스**로 보유, `build_stylesheet(theme)`가 QSS 생성 → `ui._apply_styles`의 하드코딩 QSS 대체. 다이얼로그에 흩어진 `setStyleSheet("color: red…")` 류를 `label_style/callout_style/invalid_field_style` 헬퍼로 통합, 뷰어 선택/검색 하이라이트 색도 토큰화. `tests/test_theme.py`가 **theme.py 밖의 하드코딩 색상을 grep 가드**(+다크모드 계약 유지). 한국어 문구 23건 정리(이모지 제거 `🔤`/`⚠️`, em-dash, "로드되지 않음"류 번역투 → 자연문). **오프스크린 스크린샷 요령**: `QT_QPA_FONTDIR=C:/Windows/Fonts`를 주면 offscreen 플랫폼에서도 한글이 렌더됨(없으면 전부 □). 381 tests pass(신규 10).
+
+### Added (2026-09-09, r8-ux-expansion PDCA)
+
+- **문서 내 찾기(Ctrl+F) + 저장/닫기/최근 파일 + 품질 보완**: 전체 검토 사이클. (1) **찾기**: `app/text_search.py`(pure, mypy strict) `find_text(doc, query, case_sensitive)` — `page.search_for`는 ASCII 대소문자 무시·case 옵션 없음(Context7 확인)이라 `get_textbox(rect)` 후필터로 대소문자 구분 구현. `FindBar`(`app/find_bar.py`, 250ms 디바운스 라이브 검색, Enter/Shift+Enter/Esc) + `SearchHandlerMixin`(`app/handlers/search_handlers.py`) + 뷰어 `set_highlights`(PDF rect→scene 스케일 `zoom×150/72`, `_update_scene` 후 재그리기라 재렌더에도 유지). 검색은 pending op 미반영(배치 교체와 동일 기준). 페이지 관리 변경 시 `_rerun_search`. **오프스크린 테스트 함정**: 메인 윈도우가 show되지 않으면 자식 `isVisible()`은 항상 False → 바 자체 상태는 `isHidden()`으로 판정. (2) **Save(Ctrl+S) 제자리 저장**: `DocumentSession.save_document`가 동일 경로면 `<path>.saving.tmp`에 쓰고 **old doc close → `os.replace`**(Windows는 MuPDF가 연 파일을 교체 못 함), 실패 시 원본 재오픈+tmp 정리. 암호화 문서는 보호 해제 방지를 위해 Encrypt & Save As로 리다이렉트. (3) **Close(Ctrl+W)**, **File→Open Recent**(`app/recent_files.py`, 최대 10, 누락 파일 자동 제거, `aboutToShow`마다 재구성). open/close/exit/drop의 "저장할까요?" 프롬프트를 `_confirm_discard_changes` 1곳으로 통합. (4) 품질: 히스토리 패널의 워터마크 op가 raw 클래스명으로 노출되던 것 i18n화 + 재구성 시각을 찍던 **가짜 타임스탬프 제거**; Save As 제안 경로 `str.replace(".pdf")`→`splitext`(대문자 `.PDF`면 원본과 같은 경로를 제안하던 버그); `_update_edit_action_states` 중복 리스트→루프; 뷰어 캐시 FIFO→`OrderedDict` 진짜 LRU. i18n 23키. 371 tests pass(신규 37).
 
 ### Resolved (2026-07-21, dark-mode-ui-fix PDCA)
 

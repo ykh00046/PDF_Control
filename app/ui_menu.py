@@ -1,11 +1,22 @@
 """Menu bar + keyboard shortcut construction for MainWindow.
 
 ``MenuBuilder.build()`` populates the menu bar and attaches the ``QAction``
-instances (``undo_action``, ``zoom_in_action``, etc.) to the window so the
-toolbar can reuse them.
+instances (``undo_action``, ``delete_action``, ``zoom_in_action``, etc.) to
+the window so the toolbar can reuse them -- menu and toolbar therefore
+always show the same label, tooltip, shortcut and enabled state.
 
-``ShortcutBuilder.build()`` registers the global keyboard shortcuts that are
-not bound to menu entries (Del, Ctrl+R, Page Up/Down, F1).
+Menu layout (reviewed 2026-09-09):
+
+* File  -- open / recent / close | save / save as / encrypt / decrypt | exit
+* Edit  -- undo / redo | delete / replace selection | find / next / prev /
+           batch find-replace | replacement font
+* View  -- zoom | panels
+* Tools -- page crop / section removal | text & image watermark |
+           page manager | text export
+* Help  -- shortcuts & usage (F1) | view logs
+
+``ShortcutBuilder.build()`` registers the global keys that have no menu
+entry (Page Up/Down page navigation).
 """
 
 from __future__ import annotations
@@ -16,6 +27,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
 
 from app.i18n import tr
+from app.icons import icon
 
 if TYPE_CHECKING:
     from app.ui import MainWindow
@@ -33,145 +45,188 @@ class MenuBuilder:
         self._build_view_menu()
         self._build_tools_menu()
         self._build_help_menu()
+        self._apply_icons()
+
+    def _apply_icons(self) -> None:
+        """Attach theme-tinted line icons to the actions toolbars reuse."""
+        win = self._win
+        for action, name in (
+            (win.open_action, "open"),
+            (win.save_action, "save"),
+            (win.close_action, "close"),
+            (win.undo_action, "undo"),
+            (win.redo_action, "redo"),
+            (win.delete_action, "delete"),
+            (win.replace_action, "replace"),
+            (win.find_action, "find"),
+            (win.batch_replace_action, "batch"),
+            (win.zoom_in_action, "zoom-in"),
+            (win.zoom_out_action, "zoom-out"),
+            (win.fit_to_width_action, "fit-width"),
+            (win.toggle_thumbnails_action, "pages"),
+            (win.toggle_history_action, "history"),
+        ):
+            action.setIcon(icon(name))
+
+    @staticmethod
+    def _action(
+        win: "MainWindow",
+        key: str,
+        slot,
+        shortcut: str | None = None,
+        tooltip_key: str | None = None,
+        icon_text_key: str | None = None,
+    ):
+        """Create a QAction with i18n label (+ optional shortcut / tooltip).
+
+        ``icon_text_key`` gives the short label toolbars display; without it
+        a toolbar would show the menu text including its mnemonic ("저장(S)").
+        """
+        action = QAction(tr(key), win)
+        if shortcut:
+            action.setShortcut(shortcut)
+        if tooltip_key:
+            action.setToolTip(tr(tooltip_key))
+            action.setStatusTip(tr(tooltip_key))
+        if icon_text_key:
+            action.setIconText(tr(icon_text_key))
+        action.triggered.connect(slot)
+        return action
 
     # --------------------------------------------------------------- File
     def _build_file_menu(self) -> None:
         win = self._win
-        file_menu = win.menuBar().addMenu(tr("menu.file"))
+        file_menu = win.file_menu = win.menuBar().addMenu(tr("menu.file"))
 
-        open_action = QAction(tr("menu.file.open"), win)
-        open_action.setShortcut("Ctrl+O")
-        open_action.triggered.connect(win.open_file)
-        file_menu.addAction(open_action)
+        win.open_action = self._action(
+            win, "menu.file.open", win.open_file, "Ctrl+O", "toolbar.open.tooltip", "toolbar.open"
+        )
+        file_menu.addAction(win.open_action)
 
-        file_menu.addSeparator()
+        # "Open Recent" is rebuilt every time it is shown so it always
+        # reflects the persisted list (no stale entries after Save As).
+        win.recent_menu = file_menu.addMenu(tr("menu.file.open_recent"))
+        win.recent_menu.aboutToShow.connect(win._populate_recent_menu)
+        win._populate_recent_menu()
 
-        save_as_action = QAction(tr("menu.file.save_as"), win)
-        save_as_action.setShortcut("Ctrl+Shift+S")
-        save_as_action.triggered.connect(win.save_file_as)
-        file_menu.addAction(save_as_action)
-
-        save_encrypted_action = QAction(tr("menu.file.save_encrypted"), win)
-        save_encrypted_action.setShortcut("Ctrl+Alt+S")
-        save_encrypted_action.triggered.connect(win.save_file_encrypted)
-        file_menu.addAction(save_encrypted_action)
-
-        remove_protection_action = QAction(tr("menu.file.remove_protection"), win)
-        remove_protection_action.setShortcut("Ctrl+Alt+D")
-        remove_protection_action.triggered.connect(win.save_file_decrypted)
-        file_menu.addAction(remove_protection_action)
+        win.close_action = self._action(win, "menu.file.close", win.close_file, "Ctrl+W")
+        file_menu.addAction(win.close_action)
 
         file_menu.addSeparator()
 
-        exit_action = QAction(tr("menu.file.exit"), win)
-        exit_action.setShortcut("Ctrl+Q")
-        exit_action.triggered.connect(win.close)
-        file_menu.addAction(exit_action)
+        win.save_action = self._action(
+            win, "menu.file.save", win.save_file, "Ctrl+S", "toolbar.save.tooltip", "toolbar.save"
+        )
+        file_menu.addAction(win.save_action)
+        file_menu.addAction(self._action(win, "menu.file.save_as", win.save_file_as, "Ctrl+Shift+S"))
+        file_menu.addAction(self._action(win, "menu.file.save_encrypted", win.save_file_encrypted, "Ctrl+Alt+S"))
+        file_menu.addAction(self._action(win, "menu.file.remove_protection", win.save_file_decrypted, "Ctrl+Alt+D"))
+
+        file_menu.addSeparator()
+        file_menu.addAction(self._action(win, "menu.file.exit", win.close, "Ctrl+Q"))
 
     # --------------------------------------------------------------- Edit
     def _build_edit_menu(self) -> None:
         win = self._win
-        edit_menu = win.menuBar().addMenu(tr("menu.edit"))
+        edit_menu = win.edit_menu = win.menuBar().addMenu(tr("menu.edit"))
 
-        win.undo_action = QAction(tr("menu.edit.undo"), win)
-        win.undo_action.setShortcut("Ctrl+Z")
-        win.undo_action.triggered.connect(win.undo_operation)
-        edit_menu.addAction(win.undo_action)
+        win.undo_action = self._action(win, "menu.edit.undo", win.undo_operation, "Ctrl+Z")
         win.undo_action.setEnabled(False)
+        edit_menu.addAction(win.undo_action)
 
-        win.redo_action = QAction(tr("menu.edit.redo"), win)
-        win.redo_action.setShortcut("Ctrl+Y")
-        win.redo_action.triggered.connect(win.redo_operation)
-        edit_menu.addAction(win.redo_action)
+        win.redo_action = self._action(win, "menu.edit.redo", win.redo_operation, "Ctrl+Y")
         win.redo_action.setEnabled(False)
+        edit_menu.addAction(win.redo_action)
 
         edit_menu.addSeparator()
 
-        select_font_action = QAction(tr("menu.edit.select_font"), win)
-        select_font_action.triggered.connect(win.select_replacement_font)
-        edit_menu.addAction(select_font_action)
+        # Selection actions: shared with the toolbar (same QAction objects).
+        win.delete_action = self._action(
+            win,
+            "menu.edit.delete_selection",
+            win.delete_selection,
+            "Delete",
+            "toolbar.delete.tooltip",
+            "toolbar.delete",
+        )
+        edit_menu.addAction(win.delete_action)
+        win.replace_action = self._action(
+            win,
+            "menu.edit.replace_selection",
+            win.replace_selection,
+            "Ctrl+R",
+            "toolbar.replace.tooltip",
+            "toolbar.replace",
+        )
+        edit_menu.addAction(win.replace_action)
+
+        edit_menu.addSeparator()
+
+        win.find_action = self._action(
+            win, "menu.edit.find", win.show_find_bar, "Ctrl+F", "toolbar.find.tooltip", "toolbar.find"
+        )
+        edit_menu.addAction(win.find_action)
+        edit_menu.addAction(self._action(win, "menu.edit.find_next", win.find_next, "F3"))
+        edit_menu.addAction(self._action(win, "menu.edit.find_prev", win.find_prev, "Shift+F3"))
+        win.batch_replace_action = self._action(win, "menu.edit.batch_replace", win.open_batch_replace_dialog, "Ctrl+H")
+        edit_menu.addAction(win.batch_replace_action)
+
+        edit_menu.addSeparator()
+        edit_menu.addAction(self._action(win, "menu.edit.select_font", win.select_replacement_font))
 
     # --------------------------------------------------------------- View
     def _build_view_menu(self) -> None:
         win = self._win
-        view_menu = win.menuBar().addMenu(tr("menu.view"))
+        view_menu = win.view_menu = win.menuBar().addMenu(tr("menu.view"))
 
-        win.zoom_in_action = QAction(tr("menu.view.zoom_in"), win)
-        win.zoom_in_action.setShortcut("Ctrl++")
-        win.zoom_in_action.triggered.connect(win.viewer.zoom_in)
+        win.zoom_in_action = self._action(win, "menu.view.zoom_in", win.viewer.zoom_in, "Ctrl++")
         view_menu.addAction(win.zoom_in_action)
-
-        win.zoom_out_action = QAction(tr("menu.view.zoom_out"), win)
-        win.zoom_out_action.setShortcut("Ctrl+-")
-        win.zoom_out_action.triggered.connect(win.viewer.zoom_out)
+        win.zoom_out_action = self._action(win, "menu.view.zoom_out", win.viewer.zoom_out, "Ctrl+-")
         view_menu.addAction(win.zoom_out_action)
-
-        win.fit_to_width_action = QAction(tr("menu.view.fit_to_width"), win)
-        win.fit_to_width_action.setShortcut("Ctrl+0")
-        win.fit_to_width_action.triggered.connect(win.viewer.fit_to_width)
+        win.fit_to_width_action = self._action(win, "menu.view.fit_to_width", win.viewer.fit_to_width, "Ctrl+0")
         view_menu.addAction(win.fit_to_width_action)
 
-        win.toggle_history_action = QAction(tr("menu.view.history_toggle"), win, checkable=True)
-        win.toggle_history_action.setChecked(win.history_dock.isVisible())
-        win.toggle_history_action.toggled.connect(win._toggle_history_panel)
-        view_menu.addAction(win.toggle_history_action)
+        view_menu.addSeparator()
 
         win.toggle_thumbnails_action = QAction(tr("menu.view.thumbnails_toggle"), win, checkable=True)
         win.toggle_thumbnails_action.setChecked(win.thumbnail_dock.isVisible())
         win.toggle_thumbnails_action.toggled.connect(win._toggle_thumbnail_panel)
         view_menu.addAction(win.toggle_thumbnails_action)
 
+        win.toggle_history_action = QAction(tr("menu.view.history_toggle"), win, checkable=True)
+        win.toggle_history_action.setChecked(win.history_dock.isVisible())
+        win.toggle_history_action.toggled.connect(win._toggle_history_panel)
+        view_menu.addAction(win.toggle_history_action)
+
     # --------------------------------------------------------------- Tools
     def _build_tools_menu(self) -> None:
         win = self._win
-        tools_menu = win.menuBar().addMenu(tr("menu.tools"))
+        tools_menu = win.tools_menu = win.menuBar().addMenu(tr("menu.tools"))
 
-        batch_replace_action = QAction(tr("menu.tools.batch_replace"), win)
-        batch_replace_action.triggered.connect(win.open_batch_replace_dialog)
-        tools_menu.addAction(batch_replace_action)
-
-        crop_page_action = QAction(tr("menu.tools.crop_page"), win)
-        crop_page_action.setShortcut("Ctrl+Shift+C")
-        crop_page_action.triggered.connect(win.open_crop_dialog)
-        tools_menu.addAction(crop_page_action)
-
-        remove_section_action = QAction(tr("menu.tools.remove_section"), win)
-        remove_section_action.setShortcut("Ctrl+Shift+X")
-        remove_section_action.triggered.connect(win.open_remove_section_dialog)
-        tools_menu.addAction(remove_section_action)
-
-        watermark_action = QAction(tr("menu.tools.watermark"), win)
-        watermark_action.setShortcut("Ctrl+Shift+W")
-        watermark_action.triggered.connect(win.open_watermark_dialog)
-        tools_menu.addAction(watermark_action)
-
-        image_watermark_action = QAction(tr("menu.tools.image_watermark"), win)
-        image_watermark_action.setShortcut("Ctrl+Shift+I")
-        image_watermark_action.triggered.connect(win.open_image_watermark_dialog)
-        tools_menu.addAction(image_watermark_action)
+        tools_menu.addAction(self._action(win, "menu.tools.crop_page", win.open_crop_dialog, "Ctrl+Shift+C"))
+        tools_menu.addAction(
+            self._action(win, "menu.tools.remove_section", win.open_remove_section_dialog, "Ctrl+Shift+X")
+        )
 
         tools_menu.addSeparator()
-
-        page_manager_action = QAction(tr("menu.tools.page_manager"), win)
-        page_manager_action.setShortcut("Ctrl+Shift+P")
-        page_manager_action.triggered.connect(win.open_page_manager_dialog)
-        tools_menu.addAction(page_manager_action)
+        tools_menu.addAction(self._action(win, "menu.tools.watermark", win.open_watermark_dialog, "Ctrl+Shift+W"))
+        tools_menu.addAction(
+            self._action(win, "menu.tools.image_watermark", win.open_image_watermark_dialog, "Ctrl+Shift+I")
+        )
 
         tools_menu.addSeparator()
+        tools_menu.addAction(self._action(win, "menu.tools.page_manager", win.open_page_manager_dialog, "Ctrl+Shift+P"))
 
-        export_text_action = QAction(tr("menu.tools.export_text"), win)
-        export_text_action.setShortcut("Ctrl+Shift+T")
-        export_text_action.triggered.connect(win.open_text_export_dialog)
-        tools_menu.addAction(export_text_action)
+        tools_menu.addSeparator()
+        tools_menu.addAction(self._action(win, "menu.tools.export_text", win.open_text_export_dialog, "Ctrl+Shift+T"))
 
     # --------------------------------------------------------------- Help
     def _build_help_menu(self) -> None:
         win = self._win
-        help_menu = win.menuBar().addMenu(tr("menu.help"))
-
-        view_logs_action = QAction(tr("menu.help.view_logs"), win)
-        view_logs_action.triggered.connect(win.view_logs)
-        help_menu.addAction(view_logs_action)
+        help_menu = win.help_menu = win.menuBar().addMenu(tr("menu.help"))
+        help_menu.addAction(self._action(win, "menu.help.shortcuts", win.show_help, "F1"))
+        help_menu.addSeparator()
+        help_menu.addAction(self._action(win, "menu.help.view_logs", win.view_logs))
 
 
 class ShortcutBuilder:
@@ -183,19 +238,10 @@ class ShortcutBuilder:
     def build(self) -> None:
         win = self._win
 
-        delete_shortcut = QShortcut(QKeySequence(Qt.Key_Delete), win)
-        delete_shortcut.activated.connect(win.delete_selection)
-
-        replace_shortcut = QShortcut(QKeySequence("Ctrl+R"), win)
-        replace_shortcut.activated.connect(win.replace_selection)
-
         page_up_shortcut = QShortcut(QKeySequence(Qt.Key_PageUp), win)
         page_up_shortcut.activated.connect(win.viewer.prev_page)
 
         page_down_shortcut = QShortcut(QKeySequence(Qt.Key_PageDown), win)
         page_down_shortcut.activated.connect(win.viewer.next_page)
 
-        help_shortcut = QShortcut(QKeySequence(Qt.Key_F1), win)
-        help_shortcut.activated.connect(win.show_help)
-
-        win.logger.info("Keyboard shortcuts initialized: Del, Ctrl+R, PageUp/Down, F1")
+        win.logger.info("Keyboard shortcuts initialized: PageUp/Down (menu actions carry the rest)")

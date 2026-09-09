@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
 
 from app.i18n import tr
 from app.logger import get_logger
+from app.theme import LIGHT_THEME
 
 
 class WatermarkDialog(QDialog):
@@ -123,9 +124,17 @@ class WatermarkDialog(QDialog):
         layout.addLayout(btn_row)
 
     def _update_color_button(self):
+        """Swatch button: background shows the picked color, label stays a verb.
+
+        Text color flips to keep contrast on dark swatches; the raw hex is
+        only exposed in the tooltip.
+        """
         r, g, b = (int(c * 255) for c in self._color)
-        self.color_button.setStyleSheet(f"background-color: rgb({r},{g},{b});")
-        self.color_button.setText(f"#{r:02x}{g:02x}{b:02x}")
+        luminance = 0.299 * r + 0.587 * g + 0.114 * b
+        fg = LIGHT_THEME.accent_text if luminance < 140 else LIGHT_THEME.text
+        self.color_button.setStyleSheet(f"background-color: rgb({r},{g},{b}); color: {fg};")
+        self.color_button.setText(tr("watermark.button.color"))
+        self.color_button.setToolTip(f"#{r:02x}{g:02x}{b:02x}")
 
     def _pick_color(self):
         r, g, b = (int(c * 255) for c in self._color)
