@@ -194,8 +194,15 @@ class OperationApplicator:
 
         # Pass 4: Section removal. In preview this is still safe because the
         # viewer renders against a detached temporary single-page document.
-        if operations:
-            self._apply_section_removal(page, operations)
+        # RemoveSectionAsImage REPLACES the page (a new page is inserted at
+        # this index and the original deleted), so remember the page number
+        # and re-acquire the live page from the document afterwards -- later
+        # passes must not draw on the stale, deleted handle (watermarks were
+        # silently lost whenever a section removal preceded them).
+        page_number = page.number
+        document = page.parent
+        self._apply_section_removal(page, operations)
+        page = document[page_number]
 
         # Pass 5: Watermark overlay -- LAST, so it sits on top of everything
         # (including a section-removal raster). Non-destructive, so SAVE and

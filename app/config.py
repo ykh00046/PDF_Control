@@ -134,7 +134,9 @@ def load_config() -> Dict[str, Any]:
 
         logger.info(f"Config loaded from {source_path}")
         return config
-    except (OSError, IOError) as e:
+    except (OSError, IOError, ValueError) as e:
+        # ValueError covers json.JSONDecodeError: a corrupt/truncated
+        # config.json must fall back to defaults, not crash startup.
         logger.error(f"Failed to load config: {e}, using defaults")
         return _default_config()
 
@@ -152,14 +154,21 @@ def save_config(config: Dict[str, Any]) -> bool:
     logger = get_logger()
     config_path = _config_path()
 
+    # Atomic save: write to a temporary file in the SAME directory (one
+    # filesystem, so os.replace is atomic), then swap it onto the target.
+    # A crash mid-write can no longer leave a truncated config.json
+    # behind (which load_config would have to reject as invalid JSON).
+    temp_path = config_path.with_name(config_path.name + ".tmp")
     try:
         config_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(config_path, "w", encoding="utf-8") as f:
+        with open(temp_path, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2, ensure_ascii=False)
+        os.replace(temp_path, config_path)
 
         logger.info(f"Config saved to {config_path}")
         return True
     except (OSError, IOError) as e:
+        temp_path.unlink(missing_ok=True)  # never leave a partial temp file
         logger.error(f"Failed to save config: {e}")
         return False
 

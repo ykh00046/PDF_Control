@@ -250,6 +250,13 @@ class BatchReplaceDialog(QDialog):
             # Get page text for regex matching (sanitize invalid Unicode)
             page_text = sanitize_unicode(page.get_text())
 
+            # Occurrence counter per distinct matched string on this page:
+            # search_for returns every rect for that text, so the Nth regex
+            # match of a repeated string must take the Nth rect. Taking [0]
+            # every time sent all N matches of a repeated string (e.g. the
+            # same date twice) to the first rectangle.
+            occurrence_counts: Dict[str, int] = {}
+
             # Find all matches in the page text
             for match in regex.finditer(page_text):
                 matched_text = match.group(0)
@@ -259,7 +266,11 @@ class BatchReplaceDialog(QDialog):
                 found_rects = page.search_for(matched_text)
 
                 if found_rects:
-                    rect = found_rects[0]  # Use first match (may not be perfect)
+                    occurrence = occurrence_counts.get(matched_text, 0)
+                    occurrence_counts[matched_text] = occurrence + 1
+                    # Fall back to the last rect when the page exposes fewer
+                    # searchable rects than the regex found matches.
+                    rect = found_rects[min(occurrence, len(found_rects) - 1)]
                     context_text = page.get_textbox(_context_rect(rect))
 
                     self.matches.append(
