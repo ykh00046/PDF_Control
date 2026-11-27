@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 from app.logger import get_logger, log_render_performance
 from app.model import DocumentSession
 from app.path_helper import get_base_path, get_temp_dir, is_frozen
+from app.pdf_engine import RENDER_DPI
 from app.theme import LIGHT_THEME
 
 # Canvas presentation: margin around the rendered page + its drop shadow (px).
@@ -288,12 +289,19 @@ class PDFViewer(QGraphicsView):
                 return
 
             # Push preview warnings (may be empty) into the session cache so
-            # status bar and history panel can reflect fit issues.
+            # status bar and history panel can reflect fit issues. The cache
+            # only understands per-op dicts; worker-level notices arrive as
+            # plain strings (e.g. operations skipped on deserialize) and are
+            # surfaced through the log instead.
+            response_warnings = response.get("warnings", []) or []
             if self.session is not None:
                 self.session.update_warnings(
                     response["page_index"],
-                    response.get("warnings", []) or [],
+                    [entry for entry in response_warnings if isinstance(entry, dict)],
                 )
+            for entry in response_warnings:
+                if isinstance(entry, str):
+                    get_logger().warning(f"Render worker notice: {entry}")
 
             self._on_render_finished(
                 (
@@ -435,7 +443,7 @@ class PDFViewer(QGraphicsView):
         self._draw_highlights()
 
     def _pdf_rect_to_scene(self, rect: fitz.Rect) -> QRectF:
-        scale = self.zoom_level * 150 / 72
+        scale = self.zoom_level * RENDER_DPI / 72
         return QRectF(rect.x0 * scale, rect.y0 * scale, rect.width * scale, rect.height * scale)
 
     def _draw_highlights(self):
@@ -498,7 +506,7 @@ class PDFViewer(QGraphicsView):
 
         page = self.session.doc[self.current_page_index]
         page_width_pt = page.rect.width
-        pixels_per_point = 150 / 72
+        pixels_per_point = RENDER_DPI / 72
         target_zoom = view_width / (page_width_pt * pixels_per_point)
         self.set_zoom(target_zoom)
 
@@ -586,7 +594,7 @@ class PDFViewer(QGraphicsView):
                 return fitz.Rect(0, 0, 0, 0)
             top_left_item = self.current_pixmap_item.mapFromScene(qrectf.topLeft())
             bottom_right_item = self.current_pixmap_item.mapFromScene(qrectf.bottomRight())
-            scale = self.zoom_level * 150 / 72
+            scale = self.zoom_level * RENDER_DPI / 72
             pdf_rect = fitz.Rect(
                 top_left_item.x() / scale,
                 top_left_item.y() / scale,

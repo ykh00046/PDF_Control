@@ -18,13 +18,21 @@ from app.pdf_engine import render_page_preview
 
 
 def _deserialize_operations(operations_data):
+    """Rebuild Operation objects, counting entries that fail to load.
+
+    Returns ``(operations, skipped_count)``. A non-deserializable entry is
+    skipped (the preview renders without it) but must not vanish silently:
+    the caller reports the count through the job result.
+    """
     operations = []
+    skipped = 0
     for op_data in operations_data:
         try:
             operations.append(Operation.from_dict(op_data))
         except Exception as exc:
+            skipped += 1
             get_logger().warning(f"Render worker failed to deserialize op: {exc}")
-    return operations
+    return operations, skipped
 
 
 def _read_password_from_stdin() -> str | None:
@@ -65,11 +73,12 @@ def run_render_job(job_path: str | Path) -> int:
         "page_index": job["page_index"],
         "zoom_level": job["zoom_level"],
         "duration_ms": 0.0,
+        "warnings": [],
     }
 
     start_time = time.perf_counter()
     try:
-        operations = _deserialize_operations(job.get("operations_data", []))
+        operations, skipped_operations = _deserialize_operations(job.get("operations_data", []))
         apply_result = render_page_preview(
             job["file_path"],
             job["page_index"],
@@ -91,8 +100,16 @@ def run_render_job(job_path: str | Path) -> int:
             }
             for w in (apply_result.warnings if apply_result else [])
         ]
+        if skipped_operations:
+            # The render still succeeds without the skipped ops, but the
+            # caller must be able to see that the preview is incomplete.
+            result["warnings"].append(f"{skipped_operations} operation(s) skipped (failed to deserialize)")
     except (OSError, IOError) as exc:
         result["error"] = str(exc)
+    except Exception as exc:
+        # Last-resort net: an unexpected error must produce a readable
+        # response file, never kill the worker with a raw traceback.
+        result["error"] = f"{type(exc).__name__}: {exc}"
 
     with open(response_path, "w", encoding="utf-8") as handle:
         json.dump(result, handle)

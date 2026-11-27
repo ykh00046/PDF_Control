@@ -220,6 +220,7 @@
   "remove.format.png": "PNG (Lossless, larger file)",
   "remove.button.cancel": "Cancel",
   "remove.button.apply": "Remove Section",
+  "remove.error.invalid_range": "Invalid range: Y1 must be greater than Y0",
   "status.no_selection_remove": "Please select an area to remove",
   "status.remove_applied": "Section removed. Zoom/pan to preview",
   "status.watermark_applied": "Watermark applied to {0} page(s)",

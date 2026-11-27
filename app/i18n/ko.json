@@ -220,6 +220,7 @@
   "remove.format.png": "PNG (무손실, 큰 파일)",
   "remove.button.cancel": "취소",
   "remove.button.apply": "영역 제거",
+  "remove.error.invalid_range": "잘못된 범위: Y1은 Y0보다 커야 합니다",
   "status.no_selection_remove": "제거할 영역을 선택해주세요",
   "status.remove_applied": "영역을 제거했습니다. 확대/이동으로 결과를 확인하세요",
   "status.watermark_applied": "{0}개 페이지에 워터마크 적용됨",

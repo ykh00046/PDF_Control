@@ -2,9 +2,9 @@
 
 > **Desktop PDF editing application with text selection, deletion, replacement, and advanced manipulation capabilities**
 
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.13+-blue.svg)](https://www.python.org/)
 [![PySide6](https://img.shields.io/badge/PySide6-6.0+-green.svg)](https://doc.qt.io/qtforpython/)
-[![PyMuPDF](https://img.shields.io/badge/PyMuPDF-1.23+-orange.svg)](https://pymupdf.readthedocs.io/)
+[![PyMuPDF](https://img.shields.io/badge/PyMuPDF-1.26.6-orange.svg)](https://pymupdf.readthedocs.io/)
 [![License](https://img.shields.io/badge/License-TBD-lightgrey.svg)](#-license)
 
 ---
@@ -39,7 +39,7 @@
 
 ### Prerequisites
 
-- Python 3.8 or higher
+- Python 3.13 or higher
 - Windows OS (font management is Windows-specific)
 
 ### Installation
@@ -104,7 +104,6 @@ python main.py
 PDF_Control/
 ├── main.py                      # Application entry point
 ├── requirements.txt             # Python dependencies
-├── config.json                  # Application configuration
 ├── CLAUDE.md                    # Project configuration (bkit)
 ├── README.md                    # This file
 │
@@ -137,7 +136,8 @@ PDF_Control/
 │   ├── 03-analysis/            # Analysis phase
 │   └── 04-report/              # Report phase
 │
-├── .appdata/                    # Dev-only runtime config/log output
+├── .appdata/                    # Dev-only runtime config/log output (settings live in .appdata/config.json;
+│                                # a top-level config.json is only read as a legacy fallback)
 ├── build/                       # PyInstaller intermediate output
 ├── dist/                        # Frozen build output
 └── logs/                        # Test/review scratch output (generated)
@@ -175,8 +175,9 @@ open htmlcov/index.html  # View coverage report
 ### Code Quality
 
 ```bash
-# Lint check
-flake8 app/ --max-line-length=120
+# Lint check (same gates as CI)
+python -m ruff check app tests scripts main.py
+python -m ruff format --check app tests scripts main.py
 
 # Type checking gate for the strict operations pipeline
 python -m mypy app/operations_service.py
@@ -220,7 +221,7 @@ python tests/validate_i18n.py
 
 - All core functionality implemented
 - Multi-language support (en/ko)
-- Basic test coverage (~30%)
+- Basic test coverage
 - Operation history with undo/redo
 - Logging infrastructure
 
@@ -271,9 +272,8 @@ python tests/validate_i18n.py
 
 ### Medium
 
-- **Preview-save divergence**: Preview and save use slightly different code paths
-  - **Impact**: Rare cases where preview doesn't match saved result
-  - **Fix planned**: Phase 2 (core refactoring)
+- **Preview covers text instead of deleting it**: The preview render cannot remove live text glyphs, so deleted/replaced text is covered with a sampled background patch while saving removes the text
+  - **Impact**: The preview can differ slightly from the saved file around replaced text (an accepted, intended difference)
 
 ### Low
 

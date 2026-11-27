@@ -158,7 +158,7 @@ class RemoveSectionDialog(QDialog):
 
     def apply_remove(self):
         if self.selected_rect.y1 <= self.selected_rect.y0:
-            QMessageBox.warning(self, tr("dialog.error"), "Invalid range: Y1 must be greater than Y0")
+            QMessageBox.warning(self, tr("dialog.error"), tr("remove.error.invalid_range"))
             return
 
         dpi = int(self.dpi_combo.currentText())
